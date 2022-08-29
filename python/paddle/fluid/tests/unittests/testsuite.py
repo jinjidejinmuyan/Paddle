@@ -24,8 +24,10 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
     kwargs = dict()
 
     op_maker = core.op_proto_and_checker_maker
+    # op_role_attr_name = 'op_role'
     op_role_attr_name = op_maker.kOpRoleAttrName()
 
+    # op_maker.OpRole.Forward = OpRole.Forward = 0
     if op_role_attr_name not in attrs:
         attrs[op_role_attr_name] = int(op_maker.OpRole.Forward)
 
@@ -33,12 +35,16 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
         scope.var(var_name).get_tensor()
         kwargs[name].append(var_name)
 
+    # indup = optional?
+    # in_name = X indup = False; OutSize indup = False; SizeTensor indup = True; Scale indup = False
+    # inputs: {X: data, OutSize: data}
     for in_name, in_dup in Operator.get_op_inputs(op_type):
         if in_name in inputs:
             kwargs[in_name] = []
             if in_dup:
                 sub_in = inputs[in_name]
                 for item in sub_in:
+                    # ('x0', array([50], dtype=int32))
                     sub_in_name, _ = item[0], item[1]
                     __create_var__(in_name, sub_in_name)
             else:
@@ -49,6 +55,8 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
             scope.var(name)
             kwargs[name].append(name)
 
+    # out_name = Out indup = False
+    # outputs = [Out]
     for out_name, out_dup in Operator.get_op_outputs(op_type):
         if out_name in outputs:
             kwargs[out_name] = []
@@ -60,7 +68,10 @@ def create_op(scope, op_type, inputs, outputs, attrs, cache_list=None):
             else:
                 __create_var__(out_name, out_name)
 
+    # attrs = {'data_layout': 'NCHW', 'out_d': -1, 'out_h': -1, 'out_w': 50, 'interp_method': 'linear', 'align_corners': False, 'align_mode': 0, 'op_role': 0}
     for attr_name in Operator.get_op_attr_names(op_type):
+        # data_layout out_d out_h out_w scale(None) interp_method align_corners align_mode 
+        # use_mkldnn op_role op_role_var op_namescope op_callstack op_device with_quant_attr
         if attr_name in attrs:
             kwargs[attr_name] = attrs[attr_name]
 

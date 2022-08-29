@@ -153,7 +153,7 @@ def get_numeric_gradient(place,
     elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
         tensor_to_check_dtype = np.complex64
     elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
-        tensor_tp_check_dtype = np.complex128
+        tensor_to_check_dtype = np.complex128
     else:
         raise ValueError("Not supported data type " +
                          str(tensor_to_check_dtype) + ", tensor name : " +
@@ -216,7 +216,8 @@ def get_numeric_gradient(place,
         else:
             raise TypeError("Unsupported test data type %s." %
                             tensor_to_check_dtype)
-
+    
+    # 此处在手动计算梯度
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
     for i in six.moves.xrange(tensor_size):
@@ -674,6 +675,10 @@ class OpTest(unittest.TestCase):
         if if_return_inputs_grad_dict:
             inputs_grad_dict = defaultdict()
         proto_list = op_proto.inputs if is_input else op_proto.outputs
+        # is_input=False
+        # [name: "Out", comment: "..."]
+        # is_input=True
+        # [[name: "X", comment: "..."], [OutSize, dispensable: True], [SizeTensor, duplicable: true, dispensable: true], [Scale, dispensable:true]]
         for var_proto in proto_list:
             name = var_proto.name
             if (name not in np_list) and var_proto.dispensable:
@@ -794,6 +799,8 @@ class OpTest(unittest.TestCase):
             #    if the name in ['name', 'dtype', 'out', 'output'], we will use the default value
             #    else, we will consume a input_arguments. (because the name is not corresponding, so we only use the order)
 
+            # api_params = ['x', 'OutSize', 'SizeTensor', 'Scale', 'data_layout', 'out_d', 'out_h', 'out_w', 'scale', 'interp_method', 'align_corners', 'align_mode']
+            # api_defaults = []
             api_params, api_defaults = parse_arg_and_kwargs(api)
             api_defaults = to_defaults_list(api_params, api_defaults)
             api_defaults = [
@@ -801,8 +808,10 @@ class OpTest(unittest.TestCase):
             ] + api_defaults
             assert len(api_defaults) == len(
                 api_params), "Error happens. contack xiongkun03 to solve."
+            # kernel_sig = (['X', 'OutSize', 'SizeTensor', 'Scale'], ['data_layout', 'out_d', 'out_h', 'out_w', 'scale', 'interp_method', 'align_corners', 'align_mode'], ['Out'])
             inputs_sig, attrs_sig, outputs_sig = kernel_sig
             inputs_and_attrs = inputs_sig + attrs_sig
+            # op_proto_ins 和 op_proto_attrs 从 self.input 和 self.attr 中匹配
             input_arguments = [
                 op_proto_ins.get(name, Empty()) for name in inputs_sig
             ] + [
@@ -867,6 +876,7 @@ class OpTest(unittest.TestCase):
         def _get_kernel_signature(eager_tensor_inputs, eager_tensor_outputs,
                                   attrs_outputs):
             try:
+                # 【疑问】此处的调用关系？
                 kernel_sig = _dygraph_tracer()._get_kernel_signature(
                     self.op_type, eager_tensor_inputs, eager_tensor_outputs,
                     attrs_outputs)
@@ -1858,6 +1868,7 @@ class OpTest(unittest.TestCase):
         if self.dtype == np.float64:
             self.__class__.exist_fp64_check_grad = True
 
+    # ['X'], 'Out', in_place=True, check_eager=True
     def check_grad(self,
                    inputs_to_check,
                    output_names,
@@ -1889,6 +1900,7 @@ class OpTest(unittest.TestCase):
                                        check_dygraph,
                                        check_eager=check_eager)
 
+    # ['X'], 'Out', in_place=True, check_eager=True
     def check_grad_with_place(self,
                               place,
                               inputs_to_check,
@@ -1932,6 +1944,7 @@ class OpTest(unittest.TestCase):
             op_attrs["use_mkldnn"] = False
             use_onednn = True
 
+        # ['X'], 'Out', in_place=True, check_eager=True
         self.op = create_op(self.scope,
                             self.op_type,
                             op_inputs,
@@ -1952,6 +1965,8 @@ class OpTest(unittest.TestCase):
                 raise AssertionError("no_grad_set must be None, op_type is " +
                                      self.op_type + " Op.")
 
+        # 计算输入tensor维度，设置类属性input_shape_is_large
+        # inputs_to_check = ['X']
         for input_to_check in inputs_to_check:
             set_input(self.scope, self.op, self.inputs, place)
             tensor_to_check = self.scope.find_var(input_to_check).get_tensor()
@@ -1965,7 +1980,9 @@ class OpTest(unittest.TestCase):
 
         if numeric_place is None:
             numeric_place = place
-
+        
+        # user_defined_grads=None，进入or分支
+        # inputs_to_check=['X'], output_names=['Out'], in_place=True, check_eager=True
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(numeric_place,
                                  self.scope,
@@ -2049,6 +2066,7 @@ class OpTest(unittest.TestCase):
                     if output_vars_selected.name == name:
                         return output_vars_selected
 
+    # inputs_to_check=['X'], output_names=['Out'], in_place=True, check_eager=True
     def _get_dygraph_grad(self,
                           inputs_to_check,
                           place,
@@ -2062,10 +2080,13 @@ class OpTest(unittest.TestCase):
             op_proto = OpProtoHolder.instance().get_op_proto(self.op_type)
 
             # prepare input variable
+            # inputs = ['X'(shape=[1,3,100]), 'SizeTensor'(shape=[1])]
+            # inputs_grad_dict = ['X'(shape=[1,3,100]), 'x0'(shape=[1], [50])]
             inputs, inputs_grad_dict = self.append_input_output_for_dygraph(
                 op_proto, self.inputs, True, True, block)
 
             # prepare output variable
+            # outputs = ['Out': Tensor(shape=[])]
             outputs = self.append_input_output_for_dygraph(
                 op_proto, self.outputs, False, False, block)
 

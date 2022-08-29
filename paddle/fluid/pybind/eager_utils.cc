@@ -860,6 +860,7 @@ paddle::optional<paddle::experimental::Tensor> GetOptionalTensorFromArgs(
   }
 }
 
+// 参数："cast", "x", "obj", 0, false
 static paddle::experimental::Tensor& GetTensorFromPyObject(
     const std::string& op_type,
     const std::string& arg_name,
@@ -899,12 +900,14 @@ static paddle::experimental::Tensor& GetTensorFromPyObject(
 
 // For Intermediate State Dygraph,
 // we use an uninitialized Tensor to represent dispensable Tensor
+// 参数："cast", "x", args, 0, false
 paddle::experimental::Tensor& GetTensorFromArgs(const std::string& op_type,
                                                 const std::string& arg_name,
                                                 PyObject* args,
                                                 ssize_t arg_idx,
                                                 bool dispensable) {
   PyObject* obj = PyTuple_GET_ITEM(args, arg_idx);
+  // "cast", "x", obj, 0, false
   return GetTensorFromPyObject(op_type, arg_name, obj, arg_idx, dispensable);
 }
 
@@ -1375,7 +1378,7 @@ paddle::DataType CastPyArg2DataType(PyObject* obj,
   if (obj == Py_None) {
     return paddle::experimental::DataType::UNDEFINED;
   }
-
+  // 先获取obj的Proto Type，然后将Proto Type转为Phi的DataType
   framework::proto::VarType::Type type = CastPyArg2ProtoType(obj, arg_pos);
   return framework::TransToPhiDataType(type);
 }

@@ -98,6 +98,7 @@ class Controller {
   std::unordered_map<std::string,
                      std::vector<std::vector<std::unordered_map<int, int>>>>
       custom_edges_slot_map_;
+  // 单例模式，删除拷贝构造和=重载运算符
   DISABLE_COPY_AND_ASSIGN(Controller);
 };
 

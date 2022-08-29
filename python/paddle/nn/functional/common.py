@@ -1685,11 +1685,11 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dygraph_mode():
+    if in_dygraph_mode(): # 新动态图
         #TODO(jiabin): using addmm for fast forward route
         return _C_ops.final_state_linear(x, weight, bias)
     else:
-        if _in_legacy_dygraph():
+        if _in_legacy_dygraph(): # 老动态图
             pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
                                         False)
 
@@ -1697,7 +1697,7 @@ def linear(x, weight, bias=None, name=None):
                 return pre_bias
 
             return _C_ops.elementwise_add(pre_bias, bias)
-        else:
+        else: # 静态图
             helper = LayerHelper('linear', **locals())
             dtype = x.dtype
 

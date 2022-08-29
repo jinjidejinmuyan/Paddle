@@ -225,6 +225,7 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
+  // TensorImpl实现统一接口，管理异构的Tensor实现，shared_ptr<TensorBase>
   const auto& tensor_in = input.impl();
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
