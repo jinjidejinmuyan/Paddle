@@ -478,11 +478,14 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
                           const platform::Place& place) {
+  // 基类转派生类
   auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
       op_kernel,
       platform::errors::PermissionDenied(
           "Only support operator with kernel in Dygraph mode."));
+  // 【待学习，info 在哪里构造的 infer_var_type_？】
+  // 推导输出的数据类型，SetVarDataType
   auto& info = op.Info();
   if (info.infer_var_type_) {
     RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(
@@ -490,10 +493,12 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
+  // std::map<std::string, std::vector<std::shared_ptr<VarBase>>>;
   // Initialize output var type
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
       if (var) {
+        // 设置 var 的类型
         InitializeVariable(var->MutableVar(), GetType(var));
       }
     }
@@ -517,10 +522,11 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * `transfer_scope` is created before PrepareData, the data after
    * transform is stored in the temporary scope, and then discarded
    * after the execution of op, but the original input is directly
-   * overwritten in the previous dynamic graph implemention.
+   * overwritten in the previous dynamic graph implementation.
    */
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
+  // 准备输入参数，将 ins 参数copy到 kernel_type
   auto tmp_ins_ptr =
       PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
   if (tmp_ins_ptr == nullptr) {

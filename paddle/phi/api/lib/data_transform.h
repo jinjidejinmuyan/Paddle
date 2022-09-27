@@ -25,8 +25,8 @@ class TransformFlag {
  public:
   TransformFlag(bool stop_transform = false,
                 bool trans_dtype = false,
-                bool trans_backend = true,
-                bool trans_layout = true)
+                bool trans_backend = true,  // 此处默认打开
+                bool trans_layout = true)   // 此处默认打开
       : stop_transform_(stop_transform),
         trans_data_type_(trans_dtype),
         trans_backend_(trans_backend),

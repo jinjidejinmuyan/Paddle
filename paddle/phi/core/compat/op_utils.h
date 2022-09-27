@@ -159,6 +159,7 @@ class OpUtilsMap {
 
   const std::string& GetBaseKernelName(const std::string& op_type) const {
     if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
+      // 如果查到了废弃op名称，说明需要调用fluid下的代码，此时返回预定义的字符串"deprecated"，phi下不会搜到对应的kernel
       return deprecated_kernel_name;
     }
     auto it = base_kernel_name_map_.find(op_type);

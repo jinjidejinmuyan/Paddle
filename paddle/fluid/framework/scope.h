@@ -45,6 +45,7 @@ class ScopeBase {
   /// Find a variable in the scope or any of its ancestors.  Returns
   /// nullptr if cannot find.
   /// Caller doesn't own the returned Variable.
+  // 找到 Scope 中的 Variable
   virtual Variable* FindVar(const std::string& name) const = 0;
   virtual ~ScopeBase() {}
 };
@@ -57,6 +58,7 @@ class ScopeBase {
  * One net can run in different scopes and update different variable in the
  * scope.
  */
+// 管理所有的 Variable
 class Scope : public ScopeBase {
  public:
   Scope() {}

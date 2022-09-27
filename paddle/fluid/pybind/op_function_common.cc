@@ -730,13 +730,14 @@ void ConstructAttrMapFromPyArgs(
     }
 
     std::string key(key_ptr, (size_t)key_len);  // NOLINT
+    // attr_type_map 中要有对应的 attr_name
     auto iter = attr_type_map->find(key);
     if (iter == attr_type_map->end()) {
       continue;
     }
 
     obj = PyTuple_GET_ITEM(args, arg_pos + 1);
-
+    // 根据 attr_type_map 中的参数类型做匹配
     switch (iter->second) {
       case paddle::framework::proto::AttrType::INT:
         CastPyArg2AttrInt(obj, attrs, key, op_type, arg_pos);

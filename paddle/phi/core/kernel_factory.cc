@@ -131,6 +131,7 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
           kernel_name));
 
   if (FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end()) {
+    // 其他设备都没找到的话，就从CPU的kernel里面找
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());

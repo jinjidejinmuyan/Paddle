@@ -26,6 +26,7 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
     const VariableNameMap& outputs,
     const AttributeMap& attrs,
     bool attr_check) {
+  // runtime_attrs 为标记为 Extra 的属性，standard_attrs 为一定存在的属性
   AttributeMap standard_attrs;
   AttributeMap runtime_attrs =
       paddle::operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(type);
@@ -37,13 +38,18 @@ std::unique_ptr<OperatorBase> OpRegistry::CreateOp(
       standard_attrs[attr.first] = attr.second;
     }
   }
+  // OpInfoMap 为全局单例，保存所有 Op 的信息
+  // 【疑问】OpInfoMap 何时初始化？——推测 REGISTER_OPERATOR 时插入的
   auto& info = OpInfoMap::Instance().Get(type);
   if (attr_check && info.Checker() != nullptr) {
     info.Checker()->Check(&standard_attrs);
   }
+  // info.Creator() 返回的实际上是 OperatorBase* 指针，调用了 OperatorBase
+  // 的构造函数
   auto op_base = std::unique_ptr<OperatorBase>(
       info.Creator()(type, inputs, outputs, standard_attrs));
   op_base->SetRuntimeAttributeMap(runtime_attrs);
+  // 【疑问】此时op_base持有info吗？从代码来看并没有
   return op_base;
 }
 

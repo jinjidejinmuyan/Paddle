@@ -164,6 +164,7 @@ PreparedOp PrepareImpl(
   // MKLDNN variant of code reads attributes in some of GetKernelTypeForVar and
   // GetKernelType functions, so we need to copy the attributes there.
   // Const qualifier of Attrs had to be discarded to overwrite it.
+  // 使用 attrs 的值更新 default_attrs 中的值
   if (FLAGS_use_mkldnn) {
     auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
     mutable_op_attrs = default_attrs;
@@ -177,8 +178,13 @@ PreparedOp PrepareImpl(
   // phi npu kernel > fluid npu kernel > phi cpu kernel > fluid cpu kernel
 
   // 1. get expected kernel key
+  // DygraphExecutionContext : public ExecutionContext
+  // 在 ExecutionContext 基础上还包含 ins, outs, attrs, default_attrs 成员变量
   auto dygraph_exe_ctx = DygraphExecutionContext<VarType>(
       op, empty_scope, *dev_ctx, empty_ctx, ins, outs, attrs, default_attrs);
+  // {proto::VarType::Type data_type, platform::Place place,
+  // DataLayout data_layout, LibraryType library_type, int
+  // customized_type_value}
   auto expected_kernel_key = op.GetExpectedKernelType(dygraph_exe_ctx);
 
   const phi::KernelSignature* default_kernel_signature = nullptr;
@@ -195,9 +201,10 @@ PreparedOp PrepareImpl(
 #endif
 
   bool has_phi_kernel = false;
-
+  // 返回值 using ArgumentMappingFn = std::function<KernelSignature(const
+  // ArgumentMappingContext&)>;
   const auto* arg_map_fn = phi_op_utils_map.GetArgumentMappingFn(op.Type());
-
+  // 有 sig 则表示存在 phi 的kernel
   if (arg_map_fn) {
     has_phi_kernel = true;
     kernel_signature = (*arg_map_fn)(
@@ -218,6 +225,8 @@ PreparedOp PrepareImpl(
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
+    // phi 下如果有 XPU_KP且layout=kKP 的kernel，则将 library_type 转为
+    // LibraryType::kKP
     if (paddle::platform::is_xpu_place(expected_kernel_key.place_)) {
       bool use_xpu_kp_kernel_rt =
           FLAGS_run_kp_kernel && paddle::platform::is_xpu_kp_support_op(
@@ -253,8 +262,13 @@ PreparedOp PrepareImpl(
       }
     }
 #endif
-
+    // 将 fluid 中 GetExpectedKernelType 获得的 KernelType 转为 phi
+    // 需要的kernelKey 将 fluid 下的 place_ 和 library_type_ 统一为 backend
+    // LibraryType::kCUDNN -> phi::Backend::GPUDNN, kMKLDNN -> ONEDNN, kKP ->
+    // KPS
     phi_kernel_key = TransOpKernelTypeToPhiKernelKey(expected_kernel_key);
+    // 如果没找到会返回 empty_kernel，因此后面的 phi_kernel.IsValid() 可能返回
+    // false
     auto& phi_kernel =
         phi_kernel_factory.SelectKernel(phi_kernel_name, phi_kernel_key);
 
@@ -266,11 +280,11 @@ PreparedOp PrepareImpl(
       VLOG(6) << "Dynamic mode PrepareImpl - kernel name: " << phi_kernel_name
               << " | kernel key: " << phi_kernel_key
               << " | kernel: " << phi_kernel;
-
+      // 如果 place 不一致，以 expected_kernel_key 中的为准
       if (expected_kernel_key.place_ != place) {
         dev_ctx = pool.Get(expected_kernel_key.place_);
       }
-
+      // 【疑问】phi 下 expected_kernel_key 是不是就没有用了？
       return PreparedOp(op,
                         empty_ctx,
                         expected_kernel_key,
@@ -305,7 +319,7 @@ PreparedOp PrepareImpl(
     expected_kernel_key.library_type_ = paddle::framework::LibraryType::kKP;
   }
 #endif
-
+  // 如果 fluid 下也没有找到直接匹配的 kernel
   if ((kernels_iter == all_op_kernels.end() ||
        kernels_iter->second.find(expected_kernel_key) ==
            kernels_iter->second.end())
@@ -317,6 +331,9 @@ PreparedOp PrepareImpl(
 #endif
   ) {
     if (has_phi_kernel) {
+      // 返回 {phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype()}
+      // 如果 #if defined 定义的设备都没有，返回 phi::KernelKey(UNDEFINED,
+      // UNDEFINED, UNDEFINED);
       auto phi_cpu_kernel_key =
           FallBackToCpu(expected_kernel_key, phi_kernel_key, op);
       auto& phi_cpu_kernel =
@@ -347,6 +364,7 @@ PreparedOp PrepareImpl(
           op.Type()));
 
   auto& kernels = kernels_iter->second;
+  // 不一定找到，如果没有找到，应该 fallback 到 cpu 的 kernel
   auto kernel_iter = kernels.find(expected_kernel_key);
 
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
@@ -597,6 +615,8 @@ static void PreparedOpRunPtImpl(
                                                       &kernel_type,
                                                       arg_map_fn,
                                                       default_kernel_signature);
+    // 此处需要学习 Info 在哪里注册，应该是将 infer_shape_
+    // 注册为对应OperatorWithKernel 中的 InferShape
     op.Info().infer_shape_(&infer_shape_ctx);
     record_event.End();
     platform::RecordOpInfoSupplement(
@@ -608,10 +628,12 @@ static void PreparedOpRunPtImpl(
                                        platform::TracerEventType::OperatorInner,
                                        1,
                                        platform::EventRole::kInnerOp);
-
+    // 将 ins 的 backend 转为 phi_kernel 中 input 的 expected_backend
     PreparePhiData<VarType>(phi_kernel, kernel_signature, ins);
 
     phi::KernelContext phi_kernel_context;
+    // 往 phi_kernel_context 中 emplace_back 映射后的 ins，outs，attrs
+    // 参数遵循 kernel_signature 中的顺序
     BuildDygraphPhiKernelContext<VarType>(kernel_signature,
                                           phi_kernel,
                                           ins,
@@ -620,7 +642,7 @@ static void PreparedOpRunPtImpl(
                                           default_attrs,
                                           dev_ctx,
                                           &phi_kernel_context);
-
+    // 调用 kernel 计算，【疑问】此处如何调用的？
     phi_kernel(&phi_kernel_context);
   }
 

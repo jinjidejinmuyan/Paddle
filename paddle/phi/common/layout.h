@@ -40,7 +40,7 @@ enum class DataLayout {
   NCHW,
   NCDHW,
   NDHWC,
-  MKLDNN,
+  MKLDNN,  // ONEDNN 属于 layout 吗？为什么不是backend呢？——符合现有原则吗？
   SPARSE_COO,
   SPARSE_CSR,
   PSTRING_UNION,

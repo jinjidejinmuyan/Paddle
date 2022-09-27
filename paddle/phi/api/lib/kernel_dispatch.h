@@ -55,6 +55,7 @@ struct KernelKeySet {
   DataType dtype{DataType::UNDEFINED};
 
   // TODO(chenweihang): iterate all kernelkey for kernel selection
+  // 只能返回一个KernelKey: {Backend, DataLayout, DataType}
   phi::KernelKey GetHighestPriorityKernelKey() {
     return phi::KernelKey(static_cast<Backend>(64 - detail::CountLeadingZeros(
                                                         backend_set.bitset())),
@@ -72,9 +73,12 @@ struct ArgsIterator {
     return self();
   }
 
+  // 递归apply
   template <typename T, typename... Args>
   inline Functor& apply(T&& arg, Args&&... args) {
+    // 重载了 operator() 函数
     self()(std::forward<T>(arg));
+    // 此处应该是留作扩展，继承ArgsIterator的结构体，定义short_circuit为true时走到此分支
     if (self().short_circuit()) {
       return self();
     } else {
@@ -96,6 +100,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
 
   // TODO(chenweihang): deal with multiple diff input Tensors
   // TODO(chenweihang): add global device guard method to set backend
+  // 设置KernelKeySet{BackendSet, Layout, Dtype}
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     key_set.backend_set =
         key_set.backend_set | detail::GetTensorBackendSet(tensor);
@@ -103,6 +108,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     key_set.layout = tensor.layout();
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
+    // COMPLEX64(float64=8, else=4), COMPLEX128=8时，dtype需要特别指定
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
@@ -180,6 +186,7 @@ DataType ParseDataTypeWithInputOrder(DataType dtype, const Tensor& tensor);
 
 Backend ParseBackend(const Place& place);
 Backend ParseBackend(const Tensor& tensor);
+// 可变参模版做递归
 template <typename T, typename... Args>
 Backend ParseBackend(T t, Args... args) {
   auto backend_set =

@@ -133,6 +133,27 @@ int DataTypeNumAlign(const proto::VarType::Type t) {
 // Now only supports promotion of complex type
 proto::VarType::Type PromoteTypesIfComplexExists(
     const proto::VarType::Type type_a, const proto::VarType::Type type_b) {
+  // 此处可以做效率优化——省略逻辑判断个数，并且不需要magic number
+  if (!NeedPromoteTypes(type_a, type_b)) {
+    // NOTE(chenweihang): keep consistent with rule in original op's impl,
+    // kernel type based on the first input tensor's dtype
+    return type_a;
+  }
+  if (type_a == proto::VarType::COMPLEX128 ||
+      type_b == proto::VarType::COMPLEX128) {
+    return proto::VarType::COMPLEX128;
+  } else if (type_a == proto::VarType::FP64 || type_b == proto::VarType::FP64) {
+    return proto::VarType::COMPLEX128;
+  } else if (type_a == proto::VarType::FP32 || type_b == proto::VarType::FP32) {
+    return proto::VarType::COMPLEX64;
+  } else {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Only supports to align data type include float32, float64, complex64 "
+        "and complex128, but received data type is `%s` and `%s`.",
+        DataTypeToString(type_a),
+        DataTypeToString(type_b)));
+  }
+
   constexpr auto f4 = proto::VarType::FP32;        // 5
   constexpr auto f8 = proto::VarType::FP64;        // 6
   constexpr auto c4 = proto::VarType::COMPLEX64;   // 23
