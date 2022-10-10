@@ -224,10 +224,13 @@ void Tracer::TraceOpImpl(const std::string& type,
       type, platform::TracerEventType::Operator, 1);
   platform::ScopedFlushDenormal flush;
   VLOG(1) << "Trace Op: " << type;
+  // FLAGS_use_mkldnn: 全局bool标志，设置attrs["use_mkldnn"]属性
   if (FLAGS_use_mkldnn) {
     // if both lists are empty all ops are enabled (default for
     // FLAGS_use_mkldnn=1)
     // if ops_on list is not empty only ops from that list are enabled
+    // 如果 ops_on 非空，那么只有 ops_on 中的 type 可以使用 mkldnn
+    // 如果 ops_on 为空，只要 type 不在 ops_off 里面，默认该 op 可以使用 mkldnn
     if (!FLAGS_tracer_mkldnn_ops_on.empty()) {
       auto is_on = FLAGS_tracer_mkldnn_ops_on.find(type) != std::string::npos;
       attrs["use_mkldnn"] = is_on;
@@ -237,8 +240,16 @@ void Tracer::TraceOpImpl(const std::string& type,
       attrs["use_mkldnn"] = !is_off;
     }
   }
+  // 【注意】每个python API调用都要CreateOp，本函数性能需要优化
+  // 输入参数 ins, outs, attrs
+  // 传入为空，因为CreateOp的形参VariableNameMap与ins的形参NameVarMap<VarType>不一致
+  // 返回类型
+  // OperatorBase，此时只是创建出来了op，该op的ins、outs、attrs都没有被初始化
   auto op = framework::OpRegistry::CreateOp(type, {}, {}, {}, false);
+  // attr 属性检查，【注意，op中的info是在构造函数中做的匹配】
   const auto& op_info = op->Info();
+  // 【疑问 & 待学习，此处的 Checker 是何时构造的？——推测是在构造的时候】
+  // 【疑问，为什么需要做属性检查？——新动态图中没有这个逻辑？】
   auto* attr_checker = op_info.Checker();
   if (attr_checker) {
     attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
@@ -250,10 +261,13 @@ void Tracer::TraceOpImpl(const std::string& type,
   }
 
   static paddle::framework::AttributeMap empty_attrs_map = {};
+  // 从 op_info.Checker() 中获取默认参数值，获取 OpMaker 中设置为 default
+  // 的属性值
   const paddle::framework::AttributeMap& default_attrs =
       attr_checker == nullptr ? empty_attrs_map
                               : attr_checker->GetDefaultAttrMap();
 
+  // AMP 模式下对 ins 做转换
   std::unique_ptr<NameVarMap<VarType>> ins_amp = nullptr;
   if (amp_level_ == AmpLevel::O1) {
     if (amp_dtype_ == phi::DataType::FLOAT16) {
@@ -286,7 +300,7 @@ void Tracer::TraceOpImpl(const std::string& type,
   }
 
   const auto& new_ins = ins_amp == nullptr ? ins : *ins_amp;
-
+  // 根据 GPU、XPU、NPU、MLU 设置设备ID platform::SetDeviceId(place.device);
   try {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)

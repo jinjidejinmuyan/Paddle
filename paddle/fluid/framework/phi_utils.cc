@@ -103,6 +103,8 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
 phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
                              const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
+// 【疑问】为什么这里不用定义 GPU，前面没搜到 GPU 的时候，也应该再搜 phi 下的
+// cpu kernel 此处不判断 PADDLE_WITH_CUDA 的话，返回的是 UNDEFINED
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {

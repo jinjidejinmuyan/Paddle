@@ -136,9 +136,9 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
   if ((FLAGS_enable_api_kernel_fallback && kernel_iter == iter->second.end())
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
       || paddle::platform::is_in_xpu_black_list(TransToFluidOpName(kernel_name))
-
 #endif
   ) {
+    // 其他设备都没找到的话，就从CPU的kernel里面找
     // Fallback CPU backend
     phi::KernelKey cpu_kernel_key(
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());

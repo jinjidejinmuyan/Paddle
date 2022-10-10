@@ -61,6 +61,7 @@ struct LoDTensorToArrayFunctor
   template <typename Place>
   void operator()(Place place) const {
     auto &pool = platform::DeviceContextPool::Instance();
+    // 此处的 dev_ctx 不能获取到对应的DeviceContext吗？为什么要static_cast
     auto *dev_ctx = pool.Get(place);
     if (std::is_same<Place, platform::CPUPlace>::value) {
       Apply(static_cast<phi::CPUContext *>(dev_ctx));

@@ -151,6 +151,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+    // 复数运算使用原有的dtype，【疑问】为什么？——不是关注的点，先搁置
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -160,7 +161,8 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
-      // op previously) then we also need to rotate shape NHWC -> NCWH
+      // op previously), then we also need to rotate shape NHWC -> NCWH
+      // 判断是否需要设置layout
       if ((expected_kernel_type.data_layout_ ==
            framework::DataLayout::kMKLDNN) &&
           (tensor.layout() != framework::DataLayout::kMKLDNN) &&

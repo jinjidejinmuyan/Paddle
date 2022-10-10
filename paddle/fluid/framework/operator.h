@@ -153,6 +153,7 @@ class RuntimeContext {
  */
 class OperatorBase {
  public:
+  // 保存Op类型、输入、属性、输出
   OperatorBase(const std::string& type,
                const VariableNameMap& inputs,
                const VariableNameMap& outputs,
@@ -263,6 +264,7 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // 【重点】运行时属性，包含了use_mkldnn, use_cudnn等用来分发kernel的属性
   // NOTE: runtime_attrs_ contains the attributes which used for dispatching
   // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
   // for special heterogeneous kernel (workspace_size_MB, ...).
@@ -285,6 +287,7 @@ class OperatorBase {
 
 class ExecutionContext {
  public:
+  // DeviceContext 和 RuntimeContext 区别？
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
                    const platform::DeviceContext& device_context,
@@ -597,6 +600,7 @@ class OperatorWithKernel : public OperatorBase {
                      const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  // 【疑问】每个OP都包含这样的函数，这是一个好的设计吗？是否能作为全局单例
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
     static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
@@ -663,10 +667,12 @@ class OperatorWithKernel : public OperatorBase {
    * the original Op according to the GetExpectedPhiKernelArgs returned
    * arguments.
    */
+  // 【推测，此处使用sig来做映射】
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to phi lib */
+  // 【疑问】与 GetExpectedKernelType 等价吗？
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
 
   void ChooseKernel(const ExecutionContext& ctx) const;

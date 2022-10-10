@@ -1251,7 +1251,7 @@ class Executor(object):
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()
         return as_numpy(tensors) if return_numpy else tensors
-
+    # 入口
     def run(self,
             program=None,
             feed=None,
@@ -1802,6 +1802,7 @@ class Executor(object):
             tensor.set(data, self.place)
 
         if not use_program_cache:
+            // 此处在pybind里面
             self._default_executor.run(program.desc, scope, 0, True, True,
                                        [fetch_var_name])
         else:

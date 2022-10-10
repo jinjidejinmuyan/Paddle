@@ -146,11 +146,12 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
  public:
   using T = typename std::tuple_element<I, std::tuple<ARGS...>>::type;
   OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {
-    OpInfoFiller<T> fill;
+    OpInfoFiller<T> fill;  // 匹配到对应的注册类型
     fill(op_type, info);
     constexpr auto size = sizeof...(ARGS);
-    OperatorRegistrarRecursive<I + 1, I + 1 == size, ARGS...> reg(op_type,
-                                                                  info);
+    OperatorRegistrarRecursive<I + 1, I + 1 == size, ARGS...> reg(
+        op_type,
+        info);  // 不断迭代，似乎有一种更简洁的写法，不需要获取size
     (void)(reg);
   }
 };
@@ -158,7 +159,8 @@ class OperatorRegistrarRecursive<I, false, ARGS...> {
 template <size_t I, typename... ARGS>
 class OperatorRegistrarRecursive<I, true, ARGS...> {
  public:
-  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {}
+  OperatorRegistrarRecursive(const char* op_type, OpInfo* info) {
+  }  // 迭代的终止函数
 };
 
 template <typename T>

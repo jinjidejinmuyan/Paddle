@@ -285,6 +285,198 @@ PD_REGISTER_KERNEL(coalesce_tensor,
 }
 #endif
 
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_155(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<phi::dtype::float16>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<phi::dtype::float16,
+                                                ::phi::GPUContext>)>::Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<phi::dtype::float16,
+                                                ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<phi::dtype::float16,
+                                       ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<phi::dtype::float16,
+                                                    ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<phi::dtype::float16,
+                                           ::phi::GPUContext>>::
+                VariadicCompute));
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_156(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<int>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<int, ::phi::GPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<int, ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<int, ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<int, ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<int, ::phi::GPUContext>>::
+                VariadicCompute));
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_157(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<float>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<float, ::phi::GPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<float, ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<float, ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<float, ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<float, ::phi::GPUContext>>::
+                VariadicCompute));
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_158(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<double>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<double, ::phi::GPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<double, ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<double, ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<double, ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<double, ::phi::GPUContext>>::
+                VariadicCompute));
+int TouchKernelSymbolFor_coalesce_tensor_GPU_ALL_LAYOUT() { return 0; }
+
+void __PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT(
+    const ::phi::KernelKey &kernel_key, ::phi::Kernel *kernel);
+
+PD_EXPAND(_PD_REGISTER_2TA_KERNEL(::phi::RegType::INNER,
+                                  coalesce_tensor,
+                                  GPU,
+                                  ::phi::GPUContext,
+                                  ALL_LAYOUT,
+                                  phi::CoalesceTensorKernel,
+                                  phi::dtype::float16,
+                                  int,
+                                  float,
+                                  double)) {}
+template decltype(phi::CoalesceTensorKernel<phi::dtype::float16,
+                                            ::phi::GPUContext>)
+    phi::CoalesceTensorKernel<phi::dtype::float16, ::phi::GPUContext>;
+template decltype(phi::CoalesceTensorKernel<int, ::phi::GPUContext>)
+    phi::CoalesceTensorKernel<int, ::phi::GPUContext>;
+template decltype(phi::CoalesceTensorKernel<float, ::phi::GPUContext>)
+    phi::CoalesceTensorKernel<float, ::phi::GPUContext>;
+template decltype(phi::CoalesceTensorKernel<double, ::phi::GPUContext>)
+    phi::CoalesceTensorKernel<double, ::phi::GPUContext>;
+static void __PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT(
+    const ::phi::KernelKey &kernel_key, ::phi::Kernel *kernel);
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_145(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<phi::dtype::float16>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<phi::dtype::float16,
+                                                ::phi::GPUContext>)>::Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<phi::dtype::float16,
+                                                ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<phi::dtype::float16,
+                                       ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<phi::dtype::float16,
+                                                    ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<phi::dtype::float16,
+                                           ::phi::GPUContext>>::
+                VariadicCompute));
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_146(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<int>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<int, ::phi::GPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<int, ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<int, ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<int, ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<int, ::phi::GPUContext>>::
+                VariadicCompute));
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_147(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<float>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<float, ::phi::GPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<float, ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<float, ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<float, ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<float, ::phi::GPUContext>>::
+                VariadicCompute));
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_coalesce_tensor_GPU_ALL_LAYOUT_148(
+        ::phi::RegType::INNER,
+        "coalesce_tensor",
+        "GPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<double>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::CoalesceTensorKernel<double, ::phi::GPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::CoalesceTensorKernel<double, ::phi::GPUContext>),
+            &phi::CoalesceTensorKernel<double, ::phi::GPUContext>>::Compute,
+        reinterpret_cast<void *>(
+            &::phi::KernelImpl<
+                decltype(&phi::CoalesceTensorKernel<double, ::phi::GPUContext>),
+                &phi::CoalesceTensorKernel<double, ::phi::GPUContext>>::
+                VariadicCompute));
+int TouchKernelSymbolFor_coalesce_tensor_GPU_ALL_LAYOUT() { return 0; };
+void __PD_KERNEL_args_def_FN_coalesce_tensor_GPU_ALL_LAYOUT(
+    const ::phi::KernelKey &kernel_key, ::phi::Kernel *kernel) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+}
+
 #ifdef PADDLE_WITH_XPU
 PD_REGISTER_KERNEL(coalesce_tensor,
                    XPU,

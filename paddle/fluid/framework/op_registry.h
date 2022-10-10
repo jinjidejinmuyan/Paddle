@@ -86,6 +86,7 @@ class Registrar {
   void Touch() {}
 };
 
+// 注册 info
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {

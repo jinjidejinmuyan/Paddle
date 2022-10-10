@@ -83,11 +83,14 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
       SetForwardDataTypeOfGradVar(template_var);
       const auto* tensor = GetTensorFromVar(template_var->Var());
       if (tensor && tensor->IsInitialized() && (tensor->memory_size() != 0)) {
+        // 默认按照 {expected_kernel_type.data_type_, tensor.place(),
+        // tensor.layout()} 组织
         auto kernel_type_for_var = op.GetKernelTypeForVar(
             name_pair.first, *tensor, expected_kernel_key);
         if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
           continue;
-        } else {
+        } else {  // 如果var的kernel_type和期待的不一致，kernel_type_for_var ->
+                  // expected_kernel_key
           VLOG(3) << "Transform Variable " << GetNameFromVar(template_var)
                   << " from " << kernel_type_for_var << " to "
                   << expected_kernel_key;
@@ -111,6 +114,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
             (*tmp_ins_ptr)[name_pair.first][i] = tmp_var;
           } else {
             phi::DenseTensor out;
+            // layout、datatype、device的transform
             TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out);
             if (NeedTransformDataType(kernel_type_for_var,
@@ -132,8 +136,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
                       << expected_kernel_key;
             } else {
               // if dtype is same, transform inplace will not change the
-              // original
-              // value, transform inplace to avoid multiple copy
+              // original value, transform inplace to avoid multiple copy
               SetTensorToVariable(
                   template_var->Var(), out, template_var->MutableVar());
             }

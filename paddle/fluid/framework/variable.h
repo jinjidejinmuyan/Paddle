@@ -97,12 +97,13 @@ class Variable {
       type_ = type;
     }
 
-    void* ptr_;
-    int type_;
+    void* ptr_;  // 指向数据区
+    int type_;   // 指向数据区
   };
 
   // Placeholder hides type T, so it doesn't appear as a template
   // parameter of Variable.
+  // 经典的 Placeholder 和 PlaceholderImpl 实现，Placeholder hides type T
   template <typename T>
   struct PlaceholderImpl : public Placeholder {
     static_assert(

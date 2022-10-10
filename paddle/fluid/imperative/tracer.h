@@ -142,6 +142,7 @@ class Tracer {
   // name like `tmp_0` in some cases when transform dygraph into static layers.
   // So we modify the default prefix key into `eager_tmp` to distinguish with
   // static graph.
+  // 此处的 key 与python端不同，因为C++端和python端可能生成相同名字的node
   std::string GenerateUniqueName(std::string key = "dygraph_tmp") {
     return generator_->Generate(key);
   }
@@ -198,6 +199,7 @@ class Tracer {
     return false;
   }
 
+  // fluid 调用 phi 下 kernel时的转换函数
   phi::KernelSignature GetExpectedKernelSignature(
       const std::string& type,
       const NameTensorMap& ins,

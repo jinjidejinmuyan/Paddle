@@ -1336,9 +1336,10 @@ bool OperatorWithKernel::SupportsMKLDNN(
                            kern_pair.first.dtype() ==
                                framework::TransToPhiDataType(data_type);
                   });
+  // phi 中可以找到支持 mkldnn 的 kernel
   if (has_phi_kernel) {
     return true;
-  } else {
+  } else {  // fluid 中可以找到支持 mkldnn 的 kernel
     auto op_kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
     if (op_kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
       return false;
@@ -1421,22 +1422,29 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
   // result of HasAttr.
+  // OperatorWithKernel 类中定义 enable_cache_runtime_context_ 为 bool
+  // 值，节省每次 HasAttr 时间
   if (!enable_cache_runtime_context_ && HasAttr(kEnableCacheRuntimeContext))
     enable_cache_runtime_context_ = true;
   if (!all_kernels_must_compute_runtime_shape_ &&
       HasAttr(kAllKernelsMustComputeRuntimeShape))
     all_kernels_must_compute_runtime_shape_ = true;
   const Scope* cur_scope = &scope;
-  if (!enable_cache_runtime_context_) {
+  if (!enable_cache_runtime_context_) {  // runtime_context 不能用 cache
+                                         // 的话构造新的对象
     RuntimeContext ctx(Inputs(), Outputs(), scope);
     RunImpl(scope, place, &ctx);
     pre_scope_ = cur_scope;
   } else if (run_phi_kernel_ && impl_ != nullptr && !need_prepare_data_ &&
-             !need_prepare_phi_data_) {
+             !need_prepare_phi_data_) {  // 运行 phi kernel
     if (!all_kernels_must_compute_runtime_shape_)
+      // 此处跑的是 fluid 下的 RuntimeInferShapeContext phi 下的 InferMeta？
       this->Info().infer_shape_(impl_->getRuntimeInferShapeContext());
+    // phi 的 kernel 调用 phi::KernelContext
     (*phi_kernel_)(impl_->getKernelContext());
   } else {
+    // runtime_context_ 在 cache 中的情况，不需要再重新构造
+    // RuntimeContext，除非运行的 scope 不一致
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
@@ -1467,6 +1475,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   auto exe_ctx = ExecutionContext(*this, scope, *dev_ctx, *runtime_ctx);
   // using cache
+  // 【疑问】这个 if 逻辑是不是应该挪到 ExecutionContext
+  // 上面？否则exe_ctx的dev_ctx不一致？ 判断 place 和
+  // kernel_type_->place_是否一致
   if (kernel_type_.get()) {
     dev_ctx = pool.Get(kernel_type_->place_);
   }
@@ -1484,12 +1495,15 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
   phi::KernelKey phi_kernel_key;
   std::string phi_kernel_name;
-  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
+  // 查找 op 的名称：查询 deprecated_op_names、base_kernel_name_map_以及当前 op
+  // 名称 【不一致】静态图查op名称判断是否有phi kernel，而老动态图查找 sig 文件
+  if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(
+          type_)) {  // phi 下有 kernel
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
       kernel_signature_.reset(new phi::KernelSignature(
           std::move(GetExpectedPhiKernelArgs(exe_ctx))));
       VLOG(6) << *kernel_signature_.get();
-
+      // 解析 Attr<std::string>("op_device")，返回 OpKernelType
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
@@ -1499,6 +1513,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // But the default library_type is Plain, so we need to modify the
 // library_type here, otherwise it can't work.
 #ifdef PADDLE_WITH_XPU_KP
+      // 在 phi 下应该设置 kernel_type_->library_type_ = LibraryType::kKP
+      // 然后再调用TransOpKernelTypeToPhiKernelKey
+      // 这块完全可以封装成为一个函数吧？
       if (paddle::platform::is_xpu_place(kernel_type_->place_)) {
         bool use_xpu_kp_kernel_rt =
             FLAGS_run_kp_kernel &&
@@ -1535,6 +1552,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
+      // 此时 phi_kernel_ 为空指针，因此必须要 reset
+      // 调用本函数的时候，静态图已经用 getExpectedKernelType 找到了
+      // kernel_type_
       phi_kernel_.reset(
           new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
               phi_kernel_name, phi_kernel_key)));
@@ -1547,7 +1567,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         VLOG(6) << "Static mode ChoosePhiKernel - kernel `" << phi_kernel_name
                 << "` not found.";
       }
-    } else {
+    } else {  // kernel_signature_ 和 phi_kernel_ 都不为空
       phi_kernel_name = kernel_signature_->name;
 // NOTE(Liu-xiandong):In my ctest, this branch do not be executed,
 // I can't understand it, it's really confusing.
@@ -1590,7 +1610,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
     }
-
+    // 仍然在调用 phi kernel 的逻辑内，保证
+    // phi_kernel_key，phi_kernel_，kernel_signature_ 指针一定非空
 // NOTE(Liu-xiandong): Determine whether the selected kernel is valid
 // If not, use the kernel registered in fluid. And if the fluid do not
 // contains the related heterogeneous kernel, use phi CPU kernel.
@@ -1644,6 +1665,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 #endif
       ) {
         fallback_to_cpu = true;
+        // 【问题】此处是否有bug？ PADDLE_WITH_XPU_KP 情况下 phi_kernel_key 的
+        // layout 可能未修改
         auto phi_cpu_kernel_key =
             FallBackToCpu(*kernel_type_.get(), phi_kernel_key, *this);
         phi_kernel_.reset(
@@ -1711,7 +1734,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       phi::KernelContext phi_kernel_context;
       if (enable_cache_runtime_context_ && !need_prepare_phi_data_ &&
           !need_prepare_data_) {
-        impl_ =
+        impl_ =  // 【疑问】此处构造有用吗？ RuntimeInferShapeContext
+                 // 好像没有用到？
             new CacheImpl(new phi::KernelContext(),
                           new RuntimeInferShapeContext(*this, *runtime_ctx));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
@@ -2234,6 +2258,7 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       if (!need_trans_dtype && !need_trans_layout) {
+        // run phi kernel 时不需要比较 KernelType 和 TypeForVar 的 place 吗？
         if (run_phi_kernel_ && new_expected_kernel_key == nullptr) {
           continue;
         }

@@ -1581,7 +1581,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("ResetDataset", &TrainerBase::ResetDataset);
 
   m.def("_get_eager_deletion_vars", &framework::GetEagerDeletionCleanVars);
-
+  // 静态图执行逻辑
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
       .def("close", &Executor::Close)
