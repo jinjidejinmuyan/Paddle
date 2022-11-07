@@ -64,7 +64,7 @@ inline bool NeedTransformLayout(const DataLayout& input,
   }
   return ret;
 }
-
+// 只有 CPU place 才支持 TransDataLayout
 inline phi::DenseTensor TransDataLayout(const phi::DenseTensor& tensor,
                                         DataLayout layout) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();

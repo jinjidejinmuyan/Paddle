@@ -46,6 +46,7 @@ namespace framework {
  * One net can run in different scopes and update different variable in the
  * scope.
  */
+// 管理所有的 Variable
 class Scope {
  public:
   Scope() {}

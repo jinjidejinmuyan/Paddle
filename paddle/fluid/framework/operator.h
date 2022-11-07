@@ -133,10 +133,12 @@ class OperatorBase;
 
 class RuntimeContext {
  public:
+  // 静态图使用，<string, name>
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames,
                  const Scope& scope);
 
+  // 动态图使用，<string, value>
   RuntimeContext(const VariableValueMap& invars,
                  const VariableValueMap& outvars)
       : inputs(invars), outputs(outvars) {}
@@ -153,6 +155,7 @@ class RuntimeContext {
  */
 class OperatorBase {
  public:
+  // 保存Op类型、输入、属性、输出
   OperatorBase(const std::string& type,
                const VariableNameMap& inputs,
                const VariableNameMap& outputs,
@@ -263,6 +266,7 @@ class OperatorBase {
   // IG (Inputs Gradients)
   VariableNameMap outputs_;
   AttributeMap attrs_;
+  // 【重点】运行时属性，包含了use_mkldnn, use_cudnn等用来分发kernel的属性
   // NOTE: runtime_attrs_ contains the attributes which used for dispatching
   // kernel (use_mkldnn, use_cudnn, ...) or passing additional configuration
   // for special heterogeneous kernel (workspace_size_MB, ...).
@@ -285,6 +289,7 @@ class OperatorBase {
 
 class ExecutionContext {
  public:
+  // DeviceContext 和 RuntimeContext 区别？
   ExecutionContext(const OperatorBase& op,
                    const Scope& scope,
                    const platform::DeviceContext& device_context,
@@ -608,6 +613,7 @@ class OperatorWithKernel : public OperatorBase {
                      const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
+  // 【疑问】每个OP都包含这样的函数，这是一个好的设计吗？是否能作为全局单例
   static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
     static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
@@ -680,12 +686,14 @@ class OperatorWithKernel : public OperatorBase {
    * the original Op according to the GetExpectedPhiKernelArgs returned
    * arguments.
    */
+  // 返回新动态图的函数签名
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to phi lib */
+  // 新动态图更新kernel_signature和kernel_key
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
-
+  // 旧动态图更新kernel_type_和kernel_func
   void ChooseKernel(const ExecutionContext& ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
@@ -734,6 +742,7 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
+  // 看起来像是一个专用逻辑，有 op_device 属性才会调用
   OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,

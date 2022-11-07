@@ -142,6 +142,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
       const std::string& var_name,
       const phi::DenseTensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
+    // 复数运算使用原有的dtype，【疑问】为什么？——不是关注的点，先搁置
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
       // only promote inputs’s types when contains complex input
       return framework::OpKernelType(
@@ -152,6 +153,7 @@ class MatMulV2Op : public framework::OperatorWithKernel {
 #ifdef PADDLE_WITH_MKLDNN
       // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
       // op previously) then we also need to rotate shape NHWC -> NCWH
+      // 判断是否需要设置layout
       if ((expected_kernel_type.data_layout_ == phi::DataLayout::kMKLDNN) &&
           (tensor.layout() != phi::DataLayout::kMKLDNN) &&
           paddle::platform::MKLDNNDeviceContext::tls()
@@ -173,6 +175,7 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "tensor of shape (d0, d1 ... M, K)");
     AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
     AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
+    // 添加属性的同时，也会添加 AddAttrChecker，进行属性检查
     AddAttr<bool>("trans_x",
                   "Set true to transpose the last two dimensions of X before "
                   "doing multiplication")
@@ -370,6 +373,19 @@ REGISTER_OPERATOR(matmul_v2,
                   ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
+STATIC_ASSERT_GLOBAL_NAMESPACE(
+    __reg_op__matmul_v2,
+    "REGISTER_OPERATOR must be called in global namespace");
+static ::paddle::framework::OperatorRegistrar<
+    ops::MatMulV2Op,
+    ops::MatMulV2OpMaker,
+    ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
+    ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>>
+    __op_registrar_matmul_v2__("matmul_v2");
+int TouchOpRegistrar_matmul_v2() {
+  __op_registrar_matmul_v2__.Touch();
+  return 0;
+}
 
 DECLARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad,
                             MatMulV2GradInferShapeFunctor,

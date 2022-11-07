@@ -205,7 +205,9 @@ class VariableWrapper {
         return place;
       }
     }
-    if (tensor && tensor->IsInitialized()) {
+    if (tensor &&
+        tensor
+            ->IsInitialized()) {  // 如果是tensor类型，则有place，否则int、float等在CPU
       return tensor->place();
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
@@ -334,6 +336,7 @@ class VariableWrapper {
   // calculation.
   uint32_t inplace_version_snapshot_{0};
 
+  // 【疑问】这俩有啥区别？
   framework::proto::VarType::Type type_{framework::proto::VarType::LOD_TENSOR};
   framework::proto::VarType::Type data_type_{framework::proto::VarType::FP32};
 

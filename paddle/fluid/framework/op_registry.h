@@ -86,6 +86,7 @@ class Registrar {
   void Touch() {}
 };
 
+// 注册 info
 template <typename... ARGS>
 struct OperatorRegistrar : public Registrar {
   explicit OperatorRegistrar(const char* op_type) {
@@ -168,7 +169,7 @@ inline void RegisterKernelClass(const char* op_type,
                                 Func func) {
   std::string library(library_type);
   std::string data_layout = "ANYLAYOUT";
-  if (library == "MKLDNN") {
+  if (library == "MKLDNN") {  // 此处的data_layout实际上是和mkldnn绑定的
     data_layout = "MKLDNNLAYOUT";
   }
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -199,11 +200,12 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
                   const char* library_type,
                   int customized_type_value) const {
     using T = typename KERNEL_TYPE::ELEMENT_TYPE;
+    // 注册函数
     RegisterKernelClass<PlaceType, T>(
         op_type,
         library_type,
         customized_type_value,
-
+        // 封装计算逻辑
         [op_type](const framework::ExecutionContext& ctx) {
           KERNEL_TYPE().Compute(ctx);
           CheckKernelLaunch<PlaceType>(op_type);

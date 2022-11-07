@@ -78,7 +78,7 @@ void TransformData(const OpKernelType &expected_kernel_type,
             out_format);
         out.set_mem_desc(out_mem_desc);
       } else {
-        // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
+        // Case2 - transform from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib
         TransDataLayoutFromMKLDNN(
             kernel_type_for_var, expected_kernel_type, in, &out);

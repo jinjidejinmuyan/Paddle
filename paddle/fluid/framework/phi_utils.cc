@@ -103,6 +103,8 @@ phi::KernelKey TransOpKernelTypeToPhiKernelKey(
 phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
                              const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
+// CUDA 不会 fallback 到 CPU，会直接报错
+// 无 mkldnn fallback 信息
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(expected_kernel_key.place_) ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
