@@ -1014,6 +1014,35 @@ REGISTER_OP_CUDA_KERNEL(matmul_grad_grad,
                         ops::MatMulDoubleGradKernel<phi::GPUContext, double>);
 #endif
 
+REGISTER_OP_KERNEL(matmul,
+                   CPU,
+                   ::paddle::platform::CPUPlace,
+                   ops::MatMulKernel<phi::CPUContext, float>,
+                   ops::MatMulKernel<phi::CPUContext, double>);
+REGISTER_OP_KERNEL_WITH_CUSTOM_TYPE(
+    matmul,
+    CPU,
+    ::paddle::platform::CPUPlace,
+    DEFAULT_TYPE,
+    ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue,
+    ops::MatMulKernel<phi::CPUContext, float>,
+    ops::MatMulKernel<phi::CPUContext, double>);
+STATIC_ASSERT_GLOBAL_NAMESPACE(__reg_op_kernel_matmul_CPU_DEFAULT_TYPE__,
+                               "REGISTER_OP_KERNEL must be called in "
+                               "global namespace");
+static ::paddle::framework::OpKernelRegistrar<
+    ::paddle::platform::CPUPlace,
+    ops::MatMulKernel<phi::CPUContext, float>,
+    ops::MatMulKernel<phi::CPUContext, double>>
+    __op_kernel_registrar_matmul_CPU_DEFAULT_TYPE__(
+        "matmul",
+        "CPU",
+        ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue);
+int TouchOpKernelRegistrar_matmul_CPU_DEFAULT_TYPE() {
+  __op_kernel_registrar_matmul_CPU_DEFAULT_TYPE__.Touch();
+  return 0;
+}
+
 REGISTER_OP_VERSION(matmul).AddCheckpoint(
     R"ROC(Register matmul for adding the attribute of
        fused_reshape_Y)ROC",

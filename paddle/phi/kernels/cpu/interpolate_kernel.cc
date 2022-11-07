@@ -1209,13 +1209,281 @@ PD_REGISTER_KERNEL(nearest_interp,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_KERNEL(trilinear_interp,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::TrilinearInterpKernel,
-                   float,
-                   double,
-                   uint8_t) {
+
+_PD_REGISTER_KERNEL(::phi::RegType::INNER,
+                    nearest_interp,
+                    CPU,
+                    ::phi::CPUContext,
+                    ALL_LAYOUT,
+                    phi::NearestInterpKernel,
+                    float,
+                    double,
+                    int,
+                    int64_t,
+                    uint8_t) {}
+
+PD_STATIC_ASSERT_GLOBAL_NAMESPACE(
+    PD_REGISTER_tp_kernel_ns_check_nearest_interp_CPU_ALL_LAYOUT,
+    "PD_REGISTER_KERNEL must be called in global namespace.");
+PD_EXPAND(_PD_REGISTER_2TA_KERNEL(::phi::RegType::INNER,
+                                  nearest_interp,
+                                  CPU,
+                                  ::phi::CPUContext,
+                                  ALL_LAYOUT,
+                                  phi::NearestInterpKernel,
+                                  float,
+                                  double,
+                                  int,
+                                  int64_t,
+                                  uint8_t)) {}
+
+_PD_REGISTER_2TA_KERNEL(::phi::RegType::INNER,
+                        nearest_interp,
+                        CPU,
+                        ::phi::CPUContext,
+                        ALL_LAYOUT,
+                        phi::NearestInterpKernel,
+                        float,
+                        double,
+                        int,
+                        int64_t,
+                        uint8_t);
+PD_KERNEL_INSTANTIATION(phi::NearestInterpKernel,
+                        CPU,
+                        ::phi::CPUContext,
+                        float,
+                        double,
+                        int,
+                        int64_t,
+                        uint8_t);
+_PD_KERNEL_INSTANTIATION(PD_NARGS(float, double, int, int64_t, uint8_t),
+                         phi::NearestInterpKernel,
+                         CPU,
+                         ::phi::CPUContext,
+                         float,
+                         double,
+                         int,
+                         int64_t,
+                         uint8_t);
+PD_NARGS(float, double, int, int64_t, uint8_t);
+_PD_NARGS((float, double, int, int64_t, uint8_t, _PD_RESQ_N()));
+_PD_ARG_N((float,
+           double,
+           int,
+           int64_t,
+           uint8_t,
+           15,
+           14,
+           13,
+           12,
+           11,
+           10,
+           9,
+           8,
+           7,
+           6,
+           5,
+           4,
+           3,
+           2,
+           1,
+           0));
+_PD_ARG_N_EXPAND(float,
+                 double,
+                 int,
+                 int64_t,
+                 uint8_t,
+                 15,
+                 14,
+                 13,
+                 12,
+                 11,
+                 10,
+                 9,
+                 8,
+                 7,
+                 6,
+                 5,
+                 4,
+                 3,
+                 2,
+                 1,
+                 0);
+PD_CONCATENATE(_PD_KERNEL_INSTANTIATION_, 5)
+(phi::NearestInterpKernel,
+ CPU,
+ ::phi::CPUContext,
+ float,
+ double,
+ int,
+ int64_t,
+ uint8_t);
+PD_CONCATENATE2(_PD_KERNEL_INSTANTIATION_, 5);
+_PD_KERNEL_INSTANTIATION_5(phi::NearestInterpKernel,
+                           CPU,
+                           ::phi::CPUContext,
+                           float,
+                           double,
+                           int,
+                           int64_t,
+                           uint8_t);
+template decltype(phi::NearestInterpKernel<float, ::phi::CPUContext>)
+    phi::NearestInterpKernel<float, ::phi::CPUContext>;
+static void __PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT(
+    const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);
+PD_KERNEL_REGISTRAR_INIT(::phi::RegType::INNER,
+                         nearest_interp,
+                         CPU,
+                         ::phi::CPUContext,
+                         ALL_LAYOUT,
+                         &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+                         phi::NearestInterpKernel,
+                         float,
+                         double,
+                         int,
+                         int64_t,
+                         uint8_t);
+PD_EXPAND(_PD_KERNEL_REGISTRAR_INIT(
+    5,
+    ::phi::RegType::INNER,
+    nearest_interp,
+    CPU,
+    ::phi::CPUContext,
+    ALL_LAYOUT,
+    &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+    phi::NearestInterpKernel,
+    float,
+    double,
+    int,
+    int64_t,
+    uint8_t));
+_PD_KERNEL_REGISTRAR_INIT(
+    5,
+    ::phi::RegType::INNER,
+    nearest_interp,
+    CPU,
+    ::phi::CPUContext,
+    ALL_LAYOUT,
+    &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+    phi::NearestInterpKernel,
+    float,
+    double,
+    int,
+    int64_t,
+    uint8_t)
+PD_EXPAND(PD_CONCATENATE(_PD_KERNEL_REGISTRAR_INIT_, 5)(
+    ::phi::RegType::INNER,
+    nearest_interp,
+    CPU,
+    ::phi::CPUContext,
+    ALL_LAYOUT,
+    PD_ID,
+    &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+    phi::NearestInterpKernel,
+    float,
+    double,
+    int,
+    int64_t,
+    uint8_t))
+_PD_KERNEL_REGISTRAR_INIT_5(
+    ::phi::RegType::INNER,
+    nearest_interp,
+    CPU,
+    ::phi::CPUContext,
+    ALL_LAYOUT,
+    PD_ID,
+    &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+    phi::NearestInterpKernel,
+    float,
+    double,
+    int,
+    int64_t,
+    uint8_t)
+static const ::phi::KernelRegistrar PD_CONCATENATE(
+    __reg_phi_kernel_nearest_interp_CPU_ALL_LAYOUT_, 371)(
+    ::phi::RegType::INNER,
+    "nearest_interp",
+    "CPU",
+    DATALAYOUT(ALL_LAYOUT),
+    ::paddle::experimental::CppTypeToDataType<float>::Type(),
+    ::phi::KernelArgsParseFunctor<
+        decltype(&phi::NearestInterpKernel<float, ::phi::CPUContext>)>::Parse,
+    &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+    PHI_KERNEL(phi::NearestInterpKernel<float, ::phi::CPUContext>),
+    PHI_VARIADIC_KERNEL(phi::NearestInterpKernel<float, ::phi::CPUContext>));
+
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_nearest_interp_CPU_ALL_LAYOUT_371(
+        ::phi::RegType::INNER,
+        "nearest_interp",
+        "CPU",
+        DATALAYOUT(ALL_LAYOUT),
+        ::paddle::experimental::CppTypeToDataType<float>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::NearestInterpKernel<float, ::phi::CPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+        PHI_KERNEL(phi::NearestInterpKernel<float, ::phi::CPUContext>),
+        PHI_VARIADIC_KERNEL(
+            phi::NearestInterpKernel<float, ::phi::CPUContext>));
+
+void __PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT(
+    const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);
+
+PD_REGISTER_KERNEL(
+    nearest_interp, CPU, ALL_LAYOUT, phi::NearestInterpKernel, float) {
+  kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
+}
+_PD_REGISTER_KERNEL(::phi::RegType::INNER,
+                    nearest_interp,
+                    CPU,
+                    ::phi::CPUContext,
+                    ALL_LAYOUT,
+                    phi::NearestInterpKernel,
+                    float)
+PD_EXPAND(_PD_REGISTER_2TA_KERNEL(::phi::RegType::INNER,
+                                  nearest_interp,
+                                  CPU,
+                                  ::phi::CPUContext,
+                                  ALL_LAYOUT,
+                                  phi::NearestInterpKernel,
+                                  float))
+
+template decltype(phi::NearestInterpKernel<float, ::phi::CPUContext>)
+    phi::NearestInterpKernel<float, ::phi::CPUContext>;
+static void __PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT(
+    const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);
+static const ::phi::KernelRegistrar
+    __reg_phi_kernel_nearest_interp_CPU_ALL_LAYOUT_183(
+        ::phi::RegType::INNER,
+        "nearest_interp",
+        "CPU",
+        phi::DataLayout::ALL_LAYOUT,
+        ::paddle::experimental::CppTypeToDataType<float>::Type(),
+        ::phi::KernelArgsParseFunctor<
+            decltype(&phi::NearestInterpKernel<float, ::phi::CPUContext>)>::
+            Parse,
+        &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+        ::phi::KernelImpl<
+            decltype(&phi::NearestInterpKernel<float, ::phi::CPUContext>),
+            &phi::NearestInterpKernel<float, ::phi::CPUContext>>::Compute,
+        reinterpret_cast<void*>(
+            &::phi::KernelImpl<
+                decltype(&phi::NearestInterpKernel<float, ::phi::CPUContext>),
+                &phi::NearestInterpKernel<float, ::phi::CPUContext>>::
+                VariadicCompute));
+int TouchKernelSymbolFor_nearest_interp_CPU_ALL_LAYOUT() { return 0; };
+void __PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT(
+    const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
+
+    PD_REGISTER_KERNEL(trilinear_interp,
+                       CPU,
+                       ALL_LAYOUT,
+                       phi::TrilinearInterpKernel,
+                       float,
+                       double,
+                       uint8_t) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

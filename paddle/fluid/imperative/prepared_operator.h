@@ -117,6 +117,7 @@ std::shared_ptr<NameVarMap<VarType>> PrepareData(
             // layout、datatype、device的transform
             TransformData(
                 expected_kernel_key, kernel_type_for_var, *tensor, &out);
+            // 【疑问】此处为什么还要再Transform Data一次？
             if (NeedTransformDataType(kernel_type_for_var,
                                       expected_kernel_key)) {
               // To avoid NameVarMap copy construction overhead in general

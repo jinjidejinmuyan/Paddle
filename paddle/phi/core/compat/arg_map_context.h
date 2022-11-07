@@ -44,7 +44,8 @@ struct KernelSignature {
                   paddle::small_vector<const char*>&& attrs,
                   paddle::small_vector<const char*>&& outputs)
       : name(kernel_name),
-        input_names(std::move(inputs)),
+        input_names(std::move(
+            inputs)),  // 【疑问】为什么此处需要用move，下面的函数不需要？
         attr_names(std::move(attrs)),
         output_names(std::move(outputs)) {}
   KernelSignature(const char* kernel_name,

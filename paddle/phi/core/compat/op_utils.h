@@ -187,8 +187,9 @@ class OpUtilsMap {
 
  private:
   OpUtilsMap() = default;
-
+  // 新动态图的op名，映射为老动态图的op名
   paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
+  // 函数签名映射
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);

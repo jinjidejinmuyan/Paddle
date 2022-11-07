@@ -49,6 +49,7 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
     // it is not same as kernel's layout, we should fix this error on
     // fluid Tensor
+    // 【注意】此处默认 layout 为 NCHW
     auto default_tensor_layout = phi::DataLayout::NCHW;
     if (default_key.layout() != phi::DataLayout::ANY) {
       default_tensor_layout = default_key.layout();

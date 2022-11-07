@@ -298,7 +298,7 @@ struct OpInfoFiller<T, kShapeInference> {
     // Note: if fill InferShapeFN by this Filler, the infershape here
     // will overwrite the op->InferShape func registered in kOperator Filler
     info->infer_shape_ = [](InferShapeContext* ctx) {
-      T inference;
+      T inference;  // 此处是对应的类名，因此构造一个对象进行调用，里面应该有operator()重载
       inference(ctx);
     };
   }

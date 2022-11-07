@@ -1504,6 +1504,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           std::move(GetExpectedPhiKernelArgs(exe_ctx))));
       VLOG(6) << *kernel_signature_.get();
       // 解析 Attr<std::string>("op_device")，返回 OpKernelType
+      // 【注意】此处与 mkldnn 无关，与 cuda 相关
       kernel_type_.reset(
           new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
       dev_ctx = pool.Get(kernel_type_->place_);
@@ -2269,9 +2270,9 @@ Scope* OperatorWithKernel::PrepareData(
               << (new_expected_kernel_key ? *new_expected_kernel_key
                                           : expected_kernel_key);
 
-      // In the inference scenerio, the scopes will be reused across the
-      // batches, so the `new_scope` here will result in GPU memroy explosion
-      // over the  running of operators.
+      // In the inference scenario, the scopes will be reused across the
+      // batches, so the `new_scope` here will result in GPU memory explosion
+      // over the running of operators.
       // We use a thread_local cache to fix that issue, the key in the cache is
       // the combination of the `scope` argument, from_kernel_type,
       // target_kernel_type.

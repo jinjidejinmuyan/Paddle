@@ -367,6 +367,7 @@ PreparedOp PrepareImpl(
   // 不一定找到，如果没有找到，应该 fallback 到 cpu 的 kernel
   auto kernel_iter = kernels.find(expected_kernel_key);
 
+// 【优化】此处已经有fallback函数实现了，应该直接调用函数
 #if defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
   if (paddle::platform::is_xpu_place(expected_kernel_key.place_) &&
       (kernel_iter == kernels.end() || is_xpu_unsupport)) {

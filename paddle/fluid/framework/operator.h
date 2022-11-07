@@ -133,10 +133,12 @@ class OperatorBase;
 
 class RuntimeContext {
  public:
+  // 静态图使用，<string, name>
   RuntimeContext(const VariableNameMap& innames,
                  const VariableNameMap& outnames,
                  const Scope& scope);
 
+  // 动态图使用，<string, value>
   RuntimeContext(const VariableValueMap& invars,
                  const VariableValueMap& outvars)
       : inputs(invars), outputs(outvars) {}
@@ -667,14 +669,14 @@ class OperatorWithKernel : public OperatorBase {
    * the original Op according to the GetExpectedPhiKernelArgs returned
    * arguments.
    */
-  // 【推测，此处使用sig来做映射】
+  // 返回新动态图的函数签名
   phi::KernelSignature GetExpectedPhiKernelArgs(
       const ExecutionContext& ctx) const;
 
   /* member functions for adapting to phi lib */
-  // 【疑问】与 GetExpectedKernelType 等价吗？
+  // 新动态图更新kernel_signature和kernel_key
   phi::KernelKey ChoosePhiKernel(const ExecutionContext& ctx) const;
-
+  // 旧动态图更新kernel_type_和kernel_func
   void ChooseKernel(const ExecutionContext& ctx) const;
 
   void BuildPhiKernelContext(const RuntimeContext& ctx,
@@ -719,6 +721,7 @@ class OperatorWithKernel : public OperatorBase {
                                const std::vector<std::string>& inplace_vars,
                                const Scope& exec_scope) const;
 
+  // 看起来像是一个专用逻辑，有 op_device 属性才会调用
   OpKernelType InnerGetExpectedKernelType(const ExecutionContext& ctx) const;
 
   void HandleComplexGradToRealGrad(const Scope& scope,

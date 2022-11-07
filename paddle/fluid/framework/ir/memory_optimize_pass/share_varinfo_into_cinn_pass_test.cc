@@ -28,6 +28,21 @@
 USE_OP_ITSELF(mul);
 USE_OP(cinn_launch);
 USE_OP_ITSELF(elementwise_add);
+
+// 宏模版展开
+USE_OP_ITSELF(cinn_launch);
+STATIC_ASSERT_GLOBAL_NAMESPACE(
+    __use_op_itself_cinn_launch,
+    "USE_OP_ITSELF must be called in global namespace");
+extern int TouchOpRegistrar_cinn_launch();
+UNUSED static int use_op_itself_cinn_launch_ = TouchOpRegistrar_cinn_launch();
+
+USE_OP_KERNEL(cinn_launch);
+USE_OP_DEVICE_KERNEL(cinn_launch, CPU);
+USE_OP_DEVICE_KERNEL_WITH_CUSTOM_TYPE(cinn_launch, CPU, DEFAULT_TYPE);
+extern int TouchOpKernelRegistrar_cinn_launch_CPU_DEFAULT_TYPE();
+UNUSED static int use_op_kernel_cinn_launch_CPU_DEFAULT_TYPE_ =
+    TouchOpKernelRegistrar_cinn_launch_CPU_DEFAULT_TYPE();
 namespace paddle::framework {
 
 using Name2VarInfoMap =
