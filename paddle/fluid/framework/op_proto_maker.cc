@@ -1,3 +1,4 @@
+// 【2022.11.17 看完】
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,6 +41,7 @@ OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
   return OpProtoAndCheckerMaker::VariableBuilder{output};
 }
 
+// 检查ins、outs、attrs没有重名
 void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {
@@ -64,7 +66,9 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                         OpAttrChecker* attr_checker) {
   proto_ = proto;
   op_checker_ = attr_checker;
+  // 此处才会添加 input、attrs、outputs 属性
   Make();
+  // 初始化有多少 attrs 是 Make 出来的，不包含静态图需要的属性
   op_checker_->RecordExplicitCheckerNum();
 
   const AttributeMap* extra_attrs_ptr = nullptr;
@@ -75,8 +79,10 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   if (!extra_attr_map.empty()) {
     extra_attrs_ptr = &extra_attr_map;
   }
+  // 初始化 default 属性，default 属性包含：被设置为 default 的 attr 和 extra
+  // attr 两部分
   op_checker_->InitDefaultAttributeMap(extra_attrs_ptr);
-
+  // 静态图使用，op相关属性
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(
           {static_cast<int>(OpRole::kForward),
@@ -98,12 +104,12 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
       .SetDefault({})
       .AsExtra();
 
-  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namescope.")
       .SetDefault("")
       .AsExtra();
 
   AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
-                                    "Callstack for Op Creatation.")
+                                    "Callstack for Op Creation.")
       .SetDefault({})
       .AsExtra();
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")

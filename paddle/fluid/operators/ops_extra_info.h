@@ -1,3 +1,4 @@
+// 【2022.11.18 看完】
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +38,7 @@ enum class ExtraAttrProperty : uint8_t {
   SCHEDULE,
   // The attributes for ONEDNN only, can be saved in OneDNNContext
   ONEDNN,
-  // The attributes for ONEDNN only, can be saved in GPUContext
+  // The attributes for GPUDNN only, can be saved in GPUContext
   GPUDNN,
   // Add necessary properties as needed
 };
@@ -136,7 +137,7 @@ const std::unordered_map<std::string, ExtraAttrPropertySet>
              ExtraAttrPropertySet(ExtraAttrProperty::GPUDNN)},
 };
 
-inline ExtraAttrPropertySet GetExtraAttrPropertys(
+inline ExtraAttrPropertySet GetExtraAttrProperties(
     const std::string& attr_name) {
   auto iter = extra_attr_properties.find(attr_name);
   if (iter != extra_attr_properties.end()) {

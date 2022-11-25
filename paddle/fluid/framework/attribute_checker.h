@@ -1,3 +1,4 @@
+// 【2022.11.17 看完】
 // Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +53,7 @@ class EqualGreaterThanChecker {
   T lower_bound_;
 };
 
+// 检查 IntArray 类型的属性
 template <typename T>
 class TypedAttrVarInfoChecker {
  public:
@@ -169,6 +171,7 @@ class EnumInContainer {
   std::unordered_set<T> container_;
 };
 
+// 每个属性都对应一个 TypedAttrChecker
 // check whether a certain attribute fit its limits
 // an attribute can have more than one limits
 template <typename T>
@@ -195,24 +198,27 @@ class TypedAttrChecker {
     attr_->set_support_tensor(true);
     return *this;
   }
-
+  // 如果 OpMaker 里有相应设置，则需要添加检查机制，使用 EnumInContainer 仿函数
   TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
     value_checkers_.push_back(EnumInContainer<T>(range));
     return *this;
   }
-
+  // 如果 OpMaker 里有相应设置，则需要添加检查机制，使用 GreaterThanChecker
+  // 仿函数
   TypedAttrChecker& GreaterThan(const T& lower_bound) {
     value_checkers_.push_back(GreaterThanChecker<T>(lower_bound));
     return *this;
   }
-
+  // 如果 OpMaker 里有相应设置，则需要添加检查机制，使用 EqualGreaterThanChecker
+  // 仿函数
   TypedAttrChecker& EqualGreaterThan(const T& lower_bound) {
     value_checkers_.push_back(EqualGreaterThanChecker<T>(lower_bound));
     return *this;
   }
 
   // we can add more common limits, like LessThan(), Between()...
-
+  // 如果 OpMaker 里有相应设置，则需要添加机制，此处 DefaultValueSetter
+  // 保存了默认值
   TypedAttrChecker& SetDefault(const T& default_value) {
     PADDLE_ENFORCE_EQ(
         default_value_setter_.empty(),
@@ -229,10 +235,11 @@ class TypedAttrChecker {
     value_checkers_.push_back(checker);
     return *this;
   }
-
+  // 核心逻辑
   void operator()(AttributeMap* attr_map,
                   bool get_default_value_only = false,
                   bool only_check_exist_value = false) const {
+    // 直接返回默认值
     if (get_default_value_only) {
       if (!default_value_setter_.empty()) {
         attr_map->emplace(attr_name_, default_value_setter_[0]());
@@ -257,12 +264,14 @@ class TypedAttrChecker {
     if (only_check_exist_value) {
       if (it != attr_map->end()) {
         ExtractAttribute<T> extract_attr(attr_name_);
+        // 获取属性的值
         T* attr_value = extract_attr(it->second);
         for (const auto& checker : value_checkers_) {
           checker(*attr_value);
         }
       }
     } else {
+      // 不光检查 exist 的值，还检查 default 的值
       if (it == attr_map->end()) {
         // user do not set this attr
         PADDLE_ENFORCE_EQ(
@@ -290,8 +299,10 @@ class TypedAttrChecker {
   std::vector<DefaultValueChecker> default_value_setter_;
 };
 
+// OpProtoAndCheckerMaker（OpMaker）持有的 checker
 // check whether op's all attributes fit their own limits
 class OpAttrChecker {
+  // TypedAttrChecker 仿函数的函数指针
   typedef std::function<void(AttributeMap*, bool, bool)> AttrChecker;
 
  public:
@@ -308,11 +319,13 @@ class OpAttrChecker {
              bool only_check_exist_value = false) const {
     auto checker_num = attr_checkers_.size();
     if (explicit_only) checker_num = explicit_checker_num_;
+    // 检查 checker_num 个属性
     for (size_t i = 0; i < checker_num; ++i) {
       attr_checkers_[i](attr_map, false, only_check_exist_value);
     }
   }
 
+  // 获取所有属性的默认值
   AttributeMap GetDefaultAttrsMap() const {
     AttributeMap default_values_map;
     for (const auto& checker : attr_checkers_) {
@@ -330,6 +343,7 @@ class OpAttrChecker {
       checker(&default_attrs_, true, false);
     }
     if (extra_attr_map) {
+      // 将 extra 属性也插入 default_attrs
       default_attrs_.insert(extra_attr_map->begin(), extra_attr_map->end());
     }
   }

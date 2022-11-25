@@ -1,3 +1,4 @@
+//【2022.11.17 看完】
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +87,7 @@ inline std::string New(const std::string& t_name) {
   result += kDoubleGradNewOutSuffix;
   return result;
 }
-
+// 将 src 的值赋给 dst
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
@@ -144,6 +145,7 @@ class PADDLE_API CustomOpKernelContext {
 // Record Op kernel core function
 using KernelFunc = void (*)(CustomOpKernelContext*);
 
+// 展开 ctx 中存储的 attribute
 #define PD_SPECIALIZE_ComputeCallHelper(attr_type)                             \
   template <typename... Tail>                                                  \
   struct ComputeCallHelper<attr_type, Tail...> {                               \
@@ -164,9 +166,11 @@ struct TypeTag {};
 template <typename F, F f>
 struct KernelFuncImpl;
 
+// 执行逻辑
 template <typename Return, typename... Args, Return (*impl_fn)(Args...)>
 struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   static void Compute(CustomOpKernelContext* ctx) {
+    // 此处输入三个 0，因为都要从 Context 对应的 inputs、attrs、outputs 遍历
     ComputeCallHelper<Args..., TypeTag<int>>::template Compute<0, 0, 0>(ctx);
   }
 
@@ -174,6 +178,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <typename... RemainingArgs>
   struct ComputeCallHelper;
 
+  // 展开 Context 中的输入
   template <typename... Tail>
   struct ComputeCallHelper<const Tensor&, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -202,6 +207,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // 展开 Context 中的属性
   PD_SPECIALIZE_ComputeCallHelper(bool);
   PD_SPECIALIZE_ComputeCallHelper(int);
   PD_SPECIALIZE_ComputeCallHelper(float);
@@ -232,6 +238,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_ComputeCallHelper(std::vector<int64_t>);
   PD_SPECIALIZE_ComputeCallHelper(std::vector<std::string>);
 
+  // 新动态图，展开 Context 中的输出
   template <typename... Tail>
   struct ComputeCallHelper<Tensor*, Tail...> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
@@ -246,7 +253,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
-  // TODO(chenweihang): What is the appropriate output form?
+  // 新动态图 TODO(chenweihang): What is the appropriate output form?
   // std::vector<Tensor>*? or std::vector<Tensor*>? or std::vector<Tensor*>*
   template <typename... Tail>
   struct ComputeCallHelper<std::vector<Tensor*>, Tail...> {
@@ -265,13 +272,15 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <int out_idx, typename T>
   struct ComputeReturnHelper;
 
-  // For compatibility with the original custom op form
+  // 老动态图：如果函数的 return 是
+  // std::vector<Tensor>，说明输出是靠返回值拿到结果，此时 out_idx 一定为 0 For
+  // compatibility with the original custom op form
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, std::vector<Tensor>> {
     static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
       static_assert(out_idx == 0,
                     "If return std::vector<Tensor> in Custom OpKernel, "
-                    "you cannot pass output by kernel funciton argument.");
+                    "you cannot pass output by kernel function argument.");
       auto outs = impl_fn(args...);
       auto* orig_outs = ctx->AllMutableOutput();
       PD_CHECK(orig_outs->size() == outs.size(),
@@ -281,12 +290,15 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
                " Tensors, but actually contains ",
                outs.size(),
                " Tensors.");
+      // 将输出结果分配给 context 中的 outputs
       for (size_t i = 0; i < outs.size(); ++i) {
         AssignTensorImpl(outs.at(i), &(orig_outs->at(i)));
       }
     }
   };
 
+  // 新动态图：如果函数的 return 是 void，说明输出通过函数的输入指针传递，此时
+  // out_idx 一定大于 0
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, void> {
     static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
@@ -295,6 +307,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // 展开了所有的输入参数，接下来调用 Return 的 Helper 函数
   // end: base template
   template <typename T>
   struct ComputeCallHelper<TypeTag<T>> {
@@ -541,6 +554,7 @@ class PADDLE_API OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
 
+  // 把 vector<Tensor> 类型摊平
   // format: {"<name1>", "<name2>", ...}
   OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
 
@@ -592,6 +606,9 @@ class PADDLE_API OpMetaInfoMap {
 
  private:
   OpMetaInfoMap() = default;
+  // 此处为什么使用 vector 保存？同一个 op 名可以有多个 OpMeta 吗？——
+  // 为了保存同一个 op 的 grad 和 double_grad 函数 {add: {add, add_grad,
+  // add_grad_grad}}
   std::unordered_map<std::string, std::vector<OpMetaInfo>> map_;
 
   PD_DISABLE_COPY_AND_ASSIGN(OpMetaInfoMap);
@@ -626,8 +643,7 @@ class PADDLE_API OpMetaInfoBuilder {
 void RegisterAllCustomOperator();
 
 // Using this api to load compiled custom operator's dynamic library and
-// register Custom
-// Operator into it
+// register Custom Operator into it
 void LoadCustomOperatorLib(const std::string& dso_name);
 
 /////////////////////// Op register Macro /////////////////////////

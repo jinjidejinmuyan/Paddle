@@ -1,3 +1,4 @@
+//【2022.11.17 看完】
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,14 +65,15 @@ static T* DynLoad(void* handle, std::string name) {
   return func;
 }
 
+// duplicable 带有后缀 @VECTOR
 inline static bool IsDuplicableVar(const std::string& var_name) {
   std::string suffix = kTensorVectorSuffix;
   return var_name.rfind(suffix) != std::string::npos;
 }
 
+// 去除 var_name 的 "@GRAD" 和 "@NEW" 后缀
 inline static std::string NoGrad(const std::string& var_name,
                                  bool is_double_grad = false) {
-  std::string suffix = kGradVarSuffix;
   std::string new_out_suffix = kDoubleGradNewOutSuffix;
   std::string tmp_var_name(var_name);
   if (is_double_grad &&
@@ -82,6 +84,7 @@ inline static std::string NoGrad(const std::string& var_name,
   return tmp_var_name.substr(0, tmp_var_name.size() - kGradVarSuffixSize);
 }
 
+// 根据 var_name 判断是否为反向 tensor
 inline static bool IsGradVar(const std::string& var_name, bool is_double_grad) {
   std::string suffix = kGradVarSuffix;
   if (!is_double_grad) {
@@ -98,6 +101,7 @@ inline static bool IsMemberOf(const std::vector<std::string>& vec,
   return std::find(vec.cbegin(), vec.cend(), name) != vec.cend();
 }
 
+// 解析 attribute 的 <name>:<type> 二元组
 static std::vector<std::string> ParseAttrStr(const std::string& attr) {
   auto split_pos = attr.find_first_of(":");
   PADDLE_ENFORCE_NE(split_pos,
@@ -122,13 +126,16 @@ static std::vector<std::string> ParseAttrStr(const std::string& attr) {
 ////////////////// Kernel Define ////////////////////
 
 // custom op kernel call function define
-static void RunKernelFunc(const framework::ExecutionContext& ctx,
-                          const paddle::KernelFunc& func,
-                          const std::vector<std::string>& inputs,
-                          const std::vector<std::string>& outputs,
-                          const std::vector<std::string>& attrs) {
+static void RunKernelFunc(
+    const framework::ExecutionContext& ctx,
+    const paddle::KernelFunc& func,  // void (*)(CustomOpKernelContext*)
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::vector<std::string>& attrs) {
   VLOG(3) << "Custom Operator: Start run KernelFunc.";
   // prepare CustomOpKernelContext
+  // 从 ExecutionContext ctx 根据名字取出 ins、attrs、outs，放到
+  // CustomOpKernelContext kernel_ctx 中执行运算
   paddle::CustomOpKernelContext kernel_ctx;
   for (auto& in_name : inputs) {
     VLOG(3) << "Custom Operator: input name - " << in_name;
@@ -267,6 +274,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+    // 调用 kernel 函数，更改 kernel_ctx 内部的 output
     func(&kernel_ctx);
 
     // sync output tensor data into original output
@@ -318,6 +326,7 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
   for (auto& in_name : inputs) {
     if (detail::IsDuplicableVar(in_name)) {
       OP_INOUT_CHECK(ctx->HasInputs(in_name), "Input", in_name, "Custom");
+      // 解析 vector<Tensor> 中的每个 Tensor shape
       auto vec_ddim = ctx->GetInputsDim(in_name);
       std::vector<std::vector<int64_t>> vec_shape;
       vec_shape.reserve(vec_ddim.size());
@@ -376,6 +385,7 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
   }
 
   VLOG(3) << "Custom Operator: InferShape - calc output ddim.";
+  // 调用 infershape 函数
   auto output_shapes = func(input_shapes, vec_input_shapes, custom_attrs);
 
   VLOG(3) << "Custom Operator: InferShape - set output ddim.";
@@ -383,6 +393,8 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
     auto out_name = outputs[i];
     if (detail::IsDuplicableVar(out_name)) {
       std::vector<DDim> vec_ddim;
+      // 此处的含义，应该是只支持一个 vector<Tensor>，因为直接遍历 output_shapes
+      // 的 begin-end。或者此处有 bug！
       vec_ddim.reserve(output_shapes.size());
       std::transform(output_shapes.begin(),
                      output_shapes.end(),
@@ -448,6 +460,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
 
   void Make() override {
     for (auto& in_name : inputs_) {
+      // vector<Tensor>
       if (detail::IsDuplicableVar(in_name)) {
         AddInput(in_name, "The input " + in_name + "of Custom operator.")
             .AsDuplicable();
@@ -513,8 +526,8 @@ Custom Operator.
 
 According to the phi::DenseTensor operation function implemented by the user
 independently of the framework, it is encapsulated into a framework
-operator to adapt to various execution scenarios such as dynamic graph,
-mode static graph mode, and inference mode.
+operator to adapt to various execution scenarios such as dynamic graph
+mode, static graph mode, and inference mode.
 
 )DOC");
   }
@@ -534,6 +547,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
   explicit CustomGradOpMaker(
       const OpDesc& fwd_op,
       const std::unordered_set<std::string>& no_grad_set,
+      // name@GRAD -> name
       std::unordered_map<std::string, std::string>* grad_to_var,
       const std::vector<BlockDesc*>& grad_block,
       const std::string& name,
@@ -553,6 +567,7 @@ class CustomGradOpMaker<OpDesc> : public SingleGradOpMaker<OpDesc> {
     auto fwd_op_inputs = this->InputNames();
     auto fwd_op_outputs = this->OutputNames();
 
+    // inputs_ 中包含了反向的 XXX@GRAD 和前向的 XXX
     for (auto& in_name : inputs_) {
       VLOG(3) << "Custom Operator: GradOpDescMaker - input: " << in_name;
       if (!detail::IsGradVar(in_name, is_double_grad_)) {
@@ -660,6 +675,7 @@ class CustomGradOpMaker<imperative::OpBase>
 
 //////////// Operator and Kernel Register //////////////
 
+// 注册 op 和 kernel
 static void RegisterOperatorKernelWithPlace(
     const std::string& name,
     const OperatorWithKernel::OpKernelFunc& op_kernel_func,
@@ -670,6 +686,7 @@ static void RegisterOperatorKernelWithPlace(
   OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func;
 }
 
+// 注册 kernel
 static void RegisterOperatorKernel(const std::string& name,
                                    const paddle::KernelFunc& kernel_func,
                                    const std::vector<std::string>& inputs,
@@ -710,11 +727,14 @@ static void RegisterOperatorKernel(const std::string& name,
 #endif
 }
 
+// 注册函数，从 OpMetaInfo 中创建 OpInfo 需要的信息，更新了全局的 OpInfo 以及
+// OperatorWithKernel::AllOpKernels() OpInfo 辅助创建 op，AllOpKernels
+// 映射了每个 op 的执行函数
 void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                                   void* dso_handle) {
   /* Op register */
   OpInfo info;
-
+  // 获得前向的 op
   auto& base_op_meta = op_meta_infos.front();
 
   auto op_name = OpMetaInfoHelper::GetOpName(base_op_meta);
@@ -753,6 +773,9 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
   info.checker_ = new OpAttrChecker();
   CustomOpMaker custom_maker(op_inputs, op_outputs, op_attrs);
+  // 调用 OpProtoAndCheckerMaker 的 operator() 函数，此处完成了 op 的初始化
+  // 1. 添加静态图需要的信息；2. 调用 OpMaker 中的 Make 函数，添加
+  // inputs、outputs、attrs；3. 获取 extra_attr 信息（自定义算子不需要）
   custom_maker(info.proto_, info.checker_);
   PADDLE_ENFORCE_EQ(
       info.proto_->IsInitialized(),
@@ -765,6 +788,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // InferShape
   if (infer_shape_func == nullptr) {
     // use default InferShape
+    // 此处有无性能问题？op_inputs 传递的是引用吗？
     info.infer_shape_ = [op_inputs, op_outputs](InferShapeContext* ctx) {
       PADDLE_ENFORCE_EQ(
           op_inputs.size(),
@@ -875,9 +899,13 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   }
 
   // Kernel func
+  // 注册 op 和 kernel 函数
+  // 往 OperatorWithKernel::AllOpKernels()[name][key] = op_kernel_func; 里面插入
+  // kernel_func
   RegisterOperatorKernel(
       op_name, kernel_fn, op_inputs, op_outputs, op_attrs, dso_handle);
 
+  // 注册反向或者二阶反向 kernel
   // If grad op or double grad op exists
   std::string cur_op_name = op_name;
   for (size_t i = 1; i < op_meta_infos.size(); ++i) {
@@ -979,10 +1007,9 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                       "Custom grad operator infershape error. "
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
-                      "to "
-                      "the output shape. Otherwise, Please set the forward "
-                      "input "
-                      "as the grad operator's input or  set the InferShapeFn "
+                      "to the output shape. Otherwise, please set the forward "
+                      "input as the grad operator's input or set the "
+                      "InferShapeFn "
                       "of custom grad operator by "
                       ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
               ctx->ShareDim(grad_op_inputs[0], out_name);
@@ -1012,6 +1039,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                            dso_handle);
 
     // update current info
+    // 更新 OpInfoMap 中 op 对应的 OpInfo
     OpInfoMap::Instance().Insert(cur_op_name, info);
     cur_op_name = grad_op_name;
     info = grad_info;
@@ -1034,6 +1062,7 @@ void RegisterOperatorWithMetaInfoMap(
 
 ////////////////////// User APIs ///////////////////////
 
+// 加载 API 并注册，pybind11 调用此函数，从 .so 文件中加载 MetaInfo
 // load op api
 const std::unordered_map<std::string, std::vector<OpMetaInfo>>&
 LoadOpMetaInfoAndRegisterOp(const std::string& dso_name) {

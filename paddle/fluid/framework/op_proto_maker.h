@@ -1,3 +1,4 @@
+// 【2022.11.17 看完】
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -95,6 +96,8 @@ class OpProtoAndCheckerMaker {
   VariableBuilder AddOutput(const std::string &name,
                             const std::string &comment);
 
+  // OpProtoAndCheckerMaker 父类中保存了 proto_ 和 attrs 相关的 op_checker_ 信息
+  // 每个 OpMaker 子类都会调用这个方法
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,
                                const std::string &comment) {

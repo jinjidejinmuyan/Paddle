@@ -1326,6 +1326,7 @@ _PD_KERNEL_INSTANTIATION_5(phi::NearestInterpKernel,
                            uint8_t);
 template decltype(phi::NearestInterpKernel<float, ::phi::CPUContext>)
     phi::NearestInterpKernel<float, ::phi::CPUContext>;
+
 static void __PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT(
     const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);
 PD_KERNEL_REGISTRAR_INIT(::phi::RegType::INNER,
@@ -1427,8 +1428,14 @@ static const ::phi::KernelRegistrar
 void __PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT(
     const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel);
 
-PD_REGISTER_KERNEL(
-    nearest_interp, CPU, ALL_LAYOUT, phi::NearestInterpKernel, float) {
+::phi::KernelImpl<decltype(&phi::NearestInterpKernel<float, ::phi::CPUContext>),
+                  &phi::NearestInterpKernel<float, ::phi::CPUContext>>::Compute,
+    // reinterpret_cast<void*>(&::phi::KernelImpl<decltype(&phi::NearestInterpKernel<float,
+    // ::phi::CPUContext>), &phi::NearestInterpKernel<float,
+    // ::phi::CPUContext>>::VariadicCompute),
+
+    PD_REGISTER_KERNEL(
+        nearest_interp, CPU, ALL_LAYOUT, phi::NearestInterpKernel, float) {
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(3).SetBackend(phi::Backend::ALL_BACKEND);
 }

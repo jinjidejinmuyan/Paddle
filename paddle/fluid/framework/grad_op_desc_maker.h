@@ -1,3 +1,4 @@
+// 【2022.11.18 看完】
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,12 +52,13 @@ struct GradOpPtrTrait<imperative::OpBase> {
 template <typename T>
 using GradOpPtr = typename details::GradOpPtrTrait<T>::Type;
 
+// 静态图创建 OpDesc
 /*
   This functor class is responsible for creating the gradient ops for the given
   operator fwd_op. After it is called (through operator()), the pairs of
   (gradient variable, corresponding input variable of fwd_op) will be added to
   grad_to_var. If an input variable of fwd_op is contained in no_grad_set, its
-  gradient varialbe will be ignored or kEmptyVarName depending on the template
+  gradient variable will be ignored or kEmptyVarName depending on the template
   argument DropEmptyIG in the derived classes.
  */
 class GradOpDescMakerBase {
@@ -78,7 +80,9 @@ class GradOpDescMakerBase {
   virtual ~GradOpDescMakerBase() = default;
   virtual std::vector<std::unique_ptr<OpDesc>> operator()() const = 0;
 
+  // 后续的一系列 get/set 方法主要都是从 forward_op 中获取属性
  protected:
+  // 建立从 input@GRAD 到 input 的映射
   std::vector<std::string> InputGrad(const std::string& name,
                                      bool drop_empty_grad = true) const {
     std::vector<std::string> ret_val;
@@ -89,6 +93,7 @@ class GradOpDescMakerBase {
                    std::back_inserter(ret_val),
                    [this](const std::string& fwd_var_name) -> std::string {
                      auto g_name = GradVarName(fwd_var_name);
+                     // 当前 var 不在 no_grad_set_ 中
                      if (no_grad_set_.empty() || !no_grad_set_.count(g_name)) {
                        (*this->grad_to_var_)[g_name] = fwd_var_name;
                        return g_name;
@@ -109,6 +114,7 @@ class GradOpDescMakerBase {
             " the correspondence bewteen a variable and its gradient"
             " ambiguous."));
 
+    // 将 no_grad 的移除
     std::vector<std::string> dropped_ret_val;
     dropped_ret_val.reserve(ret_val.size());
     std::copy_if(ret_val.begin(),
@@ -118,6 +124,7 @@ class GradOpDescMakerBase {
     return dropped_ret_val;
   }
 
+  // 建立从 output@GRAD 到 output 的映射
   std::vector<std::string> OutputGrad(const std::string& name) const {
     std::vector<std::string> ret_val;
     auto onames = this->Output(name);
@@ -250,7 +257,9 @@ class SingleGradOpMaker<imperative::OpBase>
   }
 
   std::shared_ptr<imperative::GradOpNode> operator()() const final {
+    // 构建一个 GradOpNode 节点
     auto node = this->NewGradNode();
+    // 这里处理了 inplace 逻辑
     auto& inplace_map = this->GetInplaceMap();
     if (!inplace_map.empty()) {
       node->SetInplaceGradNameMap(inplace_map);
@@ -285,6 +294,7 @@ class DefaultGradOpMaker final : public SingleGradOpMaker<T> {
 
     for (auto& input_param : this->InputNames()) {
       grad->SetInput(input_param, this->Input(input_param));
+      // 将 input@GRAD 设为输出，输出给前面 op 作为 grad_input
       grad->SetOutput(GradVarName(input_param),
                       this->InputGrad(input_param, DropEmptyIG));
     }

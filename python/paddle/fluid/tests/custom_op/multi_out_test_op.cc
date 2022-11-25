@@ -33,6 +33,7 @@ void fill_constant_cpu_kernel(data_t* out_data, int64_t x_numel, data_t value) {
   }
 }
 
+// 支持返回多个 Tensor，无法返回 vector<vector<Tensor>> ？
 std::vector<paddle::Tensor> MultiOutCPU(const paddle::Tensor& x) {
   auto out = paddle::Tensor(paddle::PlaceType::kCPU, x.shape());
 

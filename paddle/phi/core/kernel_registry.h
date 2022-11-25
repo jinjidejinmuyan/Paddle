@@ -49,11 +49,16 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
     // it is not same as kernel's layout, we should fix this error on
     // fluid Tensor
-    // 【注意】此处默认 layout 为 NCHW
+    // 【注意】此处默认 layout 为 NCHW，否则用注册的 layout，此处默认的 layout
+    // 和 tensor 的默认 layout 一致
     auto default_tensor_layout = phi::DataLayout::NCHW;
     if (default_key.layout() != phi::DataLayout::ANY) {
       default_tensor_layout = default_key.layout();
     }
+    // 按顺序解析输入参数
+    // 对于 Tensor：设置成 default_key.backend, kernel.layout(default_key.layout
+    // 或者默认 NCHW), default_key.dtype—— 注册的 kernel 的 layout 不会为
+    // ALL_LAYOUT？
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
       if (arg_type == std::type_index(typeid(const CPUContext&))
@@ -318,15 +323,23 @@ struct KernelRegistrar {
   }
 
  private:
-  void ConstructKernel(RegType reg_type,
-                       const char* kernel_name_cstr,
-                       const char* backend_cstr,
-                       DataLayout layout,
-                       DataType dtype,
-                       KernelArgsParseFn args_parse_fn,
-                       KernelArgsDefFn args_def_fn,
-                       KernelFn kernel_fn,
-                       void* variadic_kernel_fn) {
+  void ConstructKernel(
+      RegType reg_type,              // ::phi::RegType::INNER,
+      const char* kernel_name_cstr,  // "nearest_interp",
+      const char* backend_cstr,      // "CPU",
+      DataLayout layout,             // DATALAYOUT(ALL_LAYOUT),
+      DataType
+          dtype,  // ::paddle::experimental::CppTypeToDataType<float>::Type(),
+      KernelArgsParseFn
+          args_parse_fn,  // ::phi::KernelArgsParseFunctor<decltype(&phi::NearestInterpKernel<float,
+                          // ::phi::CPUContext>)>::Parse,
+      KernelArgsDefFn
+          args_def_fn,  // &__PD_KERNEL_args_def_FN_nearest_interp_CPU_ALL_LAYOUT,
+      KernelFn kernel_fn,  // PHI_KERNEL(phi::NearestInterpKernel<float,
+                           // ::phi::CPUContext>),
+      void*
+          variadic_kernel_fn) {  // PHI_VARIADIC_KERNEL(phi::NearestInterpKernel<float,
+                                 // ::phi::CPUContext>));
     std::string kernel_name(kernel_name_cstr);
     KernelKey kernel_key(
         paddle::experimental::StringToBackend(backend_cstr), layout, dtype);

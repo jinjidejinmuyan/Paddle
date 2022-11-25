@@ -38,6 +38,7 @@ namespace egr {
 
 AutogradMeta* EagerUtils::autograd_meta(paddle::experimental::Tensor* target) {
   auto* p_autograd_meta = target->get_autograd_meta();
+  // 如果指针为空，则创建新的 meta
   if (!p_autograd_meta) {
     auto p_autograd_meta_ptr = std::make_shared<AutogradMeta>();
     p_autograd_meta = p_autograd_meta_ptr.get();

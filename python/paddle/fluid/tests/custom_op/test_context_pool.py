@@ -27,11 +27,13 @@ from paddle.fluid.framework import _test_eager_guard
 file = '{}\\context_pool_jit\\context_pool_jit.pyd'.format(
     get_build_directory()
 )
+# 当前只注册了3个值：分别是 posix , nt , java， 对应linux(MAC)/windows/java虚拟机。nt=New Technology
 if os.name == 'nt' and os.path.isfile(file):
     cmd = 'del {}'.format(file)
     run_cmd(cmd, True)
 
 # Compile and load custom op Just-In-Time.
+# 从 context_pool_test_op.cc 文件中编译、加载 op
 custom_ops = load(
     name='context_pool_jit',
     sources=['context_pool_test_op.cc'],

@@ -2688,6 +2688,8 @@ class OpProtoHolder(object):
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
 
+    # 自定义算子更新完 Controller 中的 InfoMap 后，调用此函数
+    # 此时已经往 op_proto 中插入了新的 custom_op_name，因此如果原来 self.op_proto_map 中没有 name，表示该 name 是自定义算子的名称
     def update_op_proto(self):
         op_protos = get_all_op_protos()
         custom_op_names = []

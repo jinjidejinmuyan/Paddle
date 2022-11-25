@@ -25,6 +25,7 @@ std::vector<paddle::Tensor> ReluBackward(const paddle::Tensor& x,
                                          const paddle::Tensor& out,
                                          const paddle::Tensor& grad_out);
 
+// 同时编译多个 op
 // Reuse codes in `custom_relu_op.cc/cu` to register another custom operator
 // to test jointly compile multi operators at same time.
 PD_BUILD_OP(custom_relu_dup)

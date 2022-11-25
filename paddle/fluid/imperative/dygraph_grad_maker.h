@@ -1,3 +1,4 @@
+//【2022.11.22看完】
 // Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,11 +177,16 @@ class GradOpBaseMakerBase {
           continue;
         }
 
-        if (kRole == TracedVarRole::kBackward) {
+        if (kRole ==
+            TracedVarRole::kBackward) {  // input@GRAD 和 output@GRAD 特殊处理
           if (!var_base_temp->HasGradVar()) {
             VLOG(6) << "GradVarBase of var " << var_base_temp->Name()
                     << " in OP " << type_ << " is null";
-            var_base_temp->MutableGradVarBase();
+            var_base_temp
+                ->MutableGradVarBase();  // 如果 Var 没有反向
+                                         // Var，那么需要新建一个（传入的 name =
+                                         // input/output，想要的是
+                                         // input@GRAD/output@GRAD）
           }
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
 
@@ -237,14 +243,15 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
-        VLOG(6) << "SetIutput var name: " << var->Name();
+        VLOG(6) << "SetInput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
           if (dirty_grad_node) {
-            map_dirty_grad_node_[var] = dirty_grad_node;
+            map_dirty_grad_node_[var] =
+                dirty_grad_node;  // 映射当前 var 原有的 GradNode
           }
-          var->SetGradNode(node_);
+          var->SetGradNode(node_);  // 设置新的 GradNode
         }
       }
     }
@@ -351,7 +358,7 @@ class TracedGradOp {
 
   // Get a snapshot of VariableWrapper at a certain inplace version.
   // The inplace version number of VariableWrapper is used for inplace
-  // detection in gradient compution.
+  // detection in gradient computation.
   static const std::shared_ptr<VariableWrapper> SnapshotVarWrapper(
       const std::shared_ptr<VariableWrapper>& var_wrapper) {
     // NOTE(liym27):
@@ -383,6 +390,7 @@ class TracedGradOp {
   }
 
  private:
+  // 感觉是 op 用来执行，node 用来建图
   const std::shared_ptr<GradOpNode>& node_;
   OpBase* op_;
   // Inplace op has recursion problems when performing grad calculation.

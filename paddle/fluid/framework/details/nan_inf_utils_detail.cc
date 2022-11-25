@@ -131,6 +131,7 @@ static void InitWhiteListFormEnv() {
   }
 }
 
+// 如果 Tensor 中有 Nan 或者 Inf，则直接退出
 template <typename T>
 static void PrintNanInf(const T* value,
                         const size_t numel,
@@ -324,6 +325,7 @@ void TensorCheckerVisitor<phi::CPUContext>::apply(
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
   // use env strategy control in future, -1=print_all.
+  // 打印 Tensor 前三个 Nan、Inf、Number
   int print_num = 3;
   CheckNanInf(
       tensor_.data<T>(), tensor_.numel(), print_num, op_type_, var_name_);

@@ -37,6 +37,7 @@ namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
+  // 使用 Tensor 初始化 intermidiate_tensor_，以及 weak_grad_node_
   explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
@@ -55,7 +56,8 @@ class TensorWrapper {
      * **/
     auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     no_need_buffer_ = no_need_buffer;
-    // shallow copy tensor_impl here
+    // shallow copy tensor_impl here ———— no_need_buffer 表示不需要 tensor
+    // 的数据了 此处设置 Tensor 对应的 Impl（DenseTensor）数据
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
         // Only Copy Meta
@@ -63,6 +65,7 @@ class TensorWrapper {
             static_cast<phi::DenseTensor*>(tensor.impl().get());
         // TODO(jiabin): It's not a good idea to set memory size to zero, find
         // another way and change this.
+        // 将 intermidiate_tensor_ 的大小设置为 0，对应的 meta 为输入的 meta
         intermidiate_tensor_.set_impl(
             std::move(std::make_shared<phi::DenseTensor>(
                 std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
@@ -72,6 +75,7 @@ class TensorWrapper {
             "Unrecognized tensor type for no_need_buffer feature"));
       }
     } else {
+      // enable hooks 的时候，也只需要保存 meta 信息即可
 #ifndef PADDLE_NO_PYTHON
       if (SavedTensorsHooks::GetInstance().IsEnable() &&
           tensor.is_dense_tensor()) {
@@ -86,6 +90,7 @@ class TensorWrapper {
         packed_value_ = reinterpret_cast<PyObject*>((*pack_hook)(tensor));
       } else {
 #endif
+        // set_impl 也将 tensor 的数据给 set 进来了
         intermidiate_tensor_.set_impl(tensor.impl());
 #ifndef PADDLE_NO_PYTHON
       }
@@ -96,7 +101,8 @@ class TensorWrapper {
       // TODO(jiabin): This may has server performance issue
       intermidiate_tensor_.set_name(tensor.name() + "@Saved");
     }
-
+    // 此处设置 Tensor 对应的 autograd_meta 数据，用 Tensor 初始化
+    // intermidiate_tensor_
     if (tensor_autograd_meta) {
       auto autograd_meta =
           std::make_shared<AutogradMeta>(*tensor_autograd_meta);
@@ -105,6 +111,7 @@ class TensorWrapper {
       weak_grad_node_ = tensor_autograd_meta->GetMutableGradNode();
     }
   }
+
 #ifndef PADDLE_NO_PYTHON
   TensorWrapper(const TensorWrapper& other) {
     no_need_buffer_ = other.no_need_buffer_;

@@ -1,3 +1,4 @@
+// 【2022.11.22 看完】
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,12 +108,18 @@ class AddMMOpGradMaker : public framework::SingleGradOpMaker<T> {
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
  protected:
+  // 模版参数 T = OpDesc 时，GradOpPtr<T> = OpDesc*
+  // 模版参数 T = OpBase 时，GradOpPtr<T> = imperative::TracedGradOp*
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("addmm_grad");
+    // 设置反向 op 的名称，以及输入输出的映射关系
     retv->SetInput("Input", this->Input("Input"));
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
-    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    retv->SetInput(
+        framework::GradVarName("Out"),
+        this->OutputGrad(
+            "Out"));  // 返回 TracedVarList<VarBase, TracedVarRole::kForward>
     retv->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));

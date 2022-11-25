@@ -61,6 +61,7 @@ Tensor::Tensor(const Place &place) {
   DefaultAllocator alloc(place);
   impl_ = std::move(std::make_shared<phi::DenseTensor>(
       &alloc,
+      // Tensor 默认构造的类型：数据类型 float32，layout NCHW
       std::move(phi::DenseTensorMeta(
           phi::DataType::FLOAT32, phi::make_ddim({}), phi::DataLayout::NCHW))));
 }
@@ -184,6 +185,7 @@ T *Tensor::mutable_data() {
   return nullptr;
 }
 
+// 【疑问】此处为什么还要显式声明一下？——是为了提升性能吗？
 template PADDLE_API float *Tensor::mutable_data<float>();
 template PADDLE_API double *Tensor::mutable_data<double>();
 template PADDLE_API int64_t *Tensor::mutable_data<int64_t>();

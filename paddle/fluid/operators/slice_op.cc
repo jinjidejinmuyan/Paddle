@@ -437,12 +437,13 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SliceOpGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(slice,
-                  ops::SliceOp,
-                  ops::SliceOpMaker,
-                  ops::SliceOpGradMaker<paddle::framework::OpDesc>,
-                  ops::SliceOpGradMaker<paddle::imperative::OpBase>,
-                  ops::SliceOpVarTypeInference);
+REGISTER_OPERATOR(
+    slice,
+    ops::SliceOp,
+    ops::SliceOpMaker,
+    ops::SliceOpGradMaker<paddle::framework::OpDesc>,   // 静态图
+    ops::SliceOpGradMaker<paddle::imperative::OpBase>,  // 老动态图
+    ops::SliceOpVarTypeInference);
 REGISTER_OPERATOR(slice_grad,
                   ops::SliceOpGrad,
                   ops::SliceDoubleOpGradMaker<paddle::framework::OpDesc>,

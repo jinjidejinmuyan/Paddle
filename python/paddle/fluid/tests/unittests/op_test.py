@@ -2160,6 +2160,7 @@ class OpTest(unittest.TestCase):
                 check_eager=check_eager,
             )
 
+    # 测试反向的 grad
     def check_grad_with_place(
         self,
         place,
@@ -2203,6 +2204,7 @@ class OpTest(unittest.TestCase):
             cache_list = self.cache_name_list
 
         # oneDNN numeric gradient should use CPU kernel
+        # 反向的 kernel 都是 CPU 的 kernel
         use_onednn = False
         if "use_mkldnn" in op_attrs and op_attrs["use_mkldnn"]:
             op_attrs["use_mkldnn"] = False

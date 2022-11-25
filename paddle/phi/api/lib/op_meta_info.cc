@@ -1,3 +1,4 @@
+//【2022.11.17 看完】
 /* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,12 +50,14 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
 void CustomOpKernelContext::EmplaceBackInput(Tensor&& input) {
   size_t index = inputs_.size();
   inputs_.emplace_back(input);
+  // input_range_ 保存了当前 Tensor 名称的位置
   input_range_.emplace_back(std::make_pair(index, index + 1));
 }
 
 void CustomOpKernelContext::EmplaceBackInputs(
     const std::vector<Tensor>& inputs) {
   size_t index = inputs_.size();
+  // 此处 input_range_ 保存了 vector<Tensor> 名称的位置
   input_range_.emplace_back(std::make_pair(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
                  std::make_move_iterator(inputs.begin()),

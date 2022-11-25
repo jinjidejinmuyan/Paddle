@@ -605,6 +605,7 @@ void ClearNoNeedBufferInputs(OpBase* op) {
   }
 }
 
+// 构建反向图节点
 std::shared_ptr<GradOpNode> CreateGradOpNode(
     const framework::OperatorBase& op,
     const NameVarBaseMap& ins,

@@ -403,6 +403,7 @@ void ElementwiseCompute(const CPUContext &dev_ctx,
 
   int pre, n, post, is_run_common_broadcast, axis_trim = 0;
   if (is_xsize_larger) {
+    // 去掉 y 轴后缀为 1 的维度
     auto y_dims_trimed = TrimTrailingSingularDims(y_dims);
     axis_trim = (y_dims_trimed.size() == 0) ? x_dims.size() : axis;
     GetMidDims(x_dims,

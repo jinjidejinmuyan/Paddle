@@ -173,7 +173,7 @@ class GradNodeBase {
   virtual ~GradNodeBase() { VLOG(7) << "Destruct GradNodeBase"; }
 
   /**
-   * operator() designed to contian the real backward execution logic, it should
+   * operator() designed to contain the real backward execution logic, it should
    * be overrided by derived class defined for each operator. It accepts a
    * vector of Tensor which contains grads input of current operator
    *
@@ -182,6 +182,7 @@ class GradNodeBase {
    * Since all of paddle op composite in form of {"Slot name ", vector<Var>},
    * so, vector of vector is better choice to fit this format.
    * **/
+  // 计算逻辑，GradNodeBase 个人理解相当于一个 op，有输入，计算对应反向的输出
   virtual paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>
   operator()(paddle::small_vector<std::vector<paddle::experimental::Tensor>,

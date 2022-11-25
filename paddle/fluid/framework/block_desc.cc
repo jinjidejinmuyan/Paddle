@@ -64,6 +64,7 @@ VarDesc *BlockDesc::RenameVar(const std::string &old_name,
   return new_var;
 }
 
+// 找到当前 BlockDesc 中的 VarDesc
 VarDesc *BlockDesc::FindVarRecursive(const std::string &name) const {
   if (name == kEmptyVarName) return nullptr;
 

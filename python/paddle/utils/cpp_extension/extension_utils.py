@@ -1,3 +1,4 @@
+# 【2022.11.25看完】
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,6 +132,14 @@ information
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 '''
 
+# 一些 op 自带的 attrs，静态图专用
+# static const char *OpRoleAttrName() { return "op_role"; }
+# static const char *OpRoleVarAttrName() { return "op_role_var"; }
+# static const char *OpNamescopeAttrName() { return "op_namescope"; }
+# static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
+# static const char *OpDeviceAttrName() { return "op_device"; }
+# static const char *OpWithQuantAttrName() { return "with_quant_attr"; }
+
 DEFAULT_OP_ATTR_NAMES = [
     core.op_proto_and_checker_maker.kOpRoleAttrName(),
     core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
@@ -146,6 +155,7 @@ def bootstrap_context():
     """
     Context to manage how to write `__bootstrap__` code in .egg
     """
+    # bdist_egg 什么时候会执行呢？——肯定在编译外部模块之后，因为编译完模块后，才会有 op 对应的 .so 路径信息
     origin_write_stub = bdist_egg.write_stub
     bdist_egg.write_stub = custom_write_stub
     yield
@@ -182,6 +192,7 @@ def custom_write_stub(resource, pyfile):
                 setattr(new_module, api_name, eval(api_name))
 
             return new_module
+            # 此处好像已经返回了一个可调用的 module
 
         def __bootstrap__():
             assert os.path.exists(so_path)
@@ -197,7 +208,8 @@ def custom_write_stub(resource, pyfile):
         """
     ).lstrip()
 
-    # Parse registerring op information
+    # 【疑问】这个信息什么时候 add 进去的？—— build_ext 命令执行，即编译的时候注册的
+    # Parse registering op information
     _, op_info = CustomOpInfo.instance().last()
     so_path = op_info.so_path
 
@@ -232,6 +244,7 @@ class CustomOpInfo:
     A global Singleton map to record all compiled custom ops information.
     """
 
+    # python 端全局单例的使用方式
     @classmethod
     def instance(cls):
         if not hasattr(cls, '_instance'):
@@ -245,12 +258,13 @@ class CustomOpInfo:
         # NOTE(Aurelius84): Use OrderedDict to save more order information
         self.op_info_map = collections.OrderedDict()
 
+    # 添加 op_name 对应的 so 文件名和 so_path
     def add(self, op_name, so_name, so_path=None):
         self.op_info_map[op_name] = OpInfo(so_name, so_path)
 
     def last(self):
         """
-        Return the lastest insert custom op info.
+        Return the latest insert custom op info.
         """
         assert len(self.op_info_map) > 0
         return next(reversed(self.op_info_map.items()))
@@ -311,6 +325,7 @@ def combine_hash(md5, value):
     return md5
 
 
+# 管理 so_path 的版本，如果 cflags 改变了，则删除 so_path，重新编译
 def clean_object_if_change_cflags(so_path, extension):
     """
     If already compiling source before, we should check whether cflags
@@ -499,6 +514,7 @@ def _get_include_dirs_when_compiling(compile_dir):
     assert os.path.isfile(include_dirs_file), "File {} does not exist".format(
         include_dirs_file
     )
+    # 从 compile_dir/includes.txt 中搜索，找到编译需要的 include 包
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f.readlines() if line.strip()]
 
@@ -506,6 +522,7 @@ def _get_include_dirs_when_compiling(compile_dir):
     all_include_dirs = list(include_dirs)
     for extra_dir in extra_dirs:
         for include_dir in include_dirs:
+            # 如果 include_dirs/extra_dirs 目录存在，则更新 all_include_dirs
             d = os.path.join(include_dir, extra_dir)
             if os.path.isdir(d):
                 all_include_dirs.append(d)
@@ -532,22 +549,26 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
     include_dirs.extend(compile_include_dirs)
     include_dirs.extend(find_paddle_includes(use_cuda))
 
+    # 添加了三个部分的 include_dir，更新参数 kwargs['include_dirs'] 路径，主要是 include .h
+    # 1. 用户指定的 include_dirs 目录；
+    # 2. _compile_dir 编译 paddle 的 include 目录；
+    # 3. paddle 本身需要的 include 目录
     kwargs['include_dirs'] = include_dirs
 
-    # append necessary lib path of paddle
+    # append necessary lib path of paddle，添加 lib .so
     library_dirs = kwargs.get('library_dirs', [])
     library_dirs.extend(find_paddle_libraries(use_cuda))
     kwargs['library_dirs'] = library_dirs
 
-    # append compile flags and check settings of compiler
+    # append compile flags and check settings of compiler，额外的编译选项
     extra_compile_args = kwargs.get('extra_compile_args', [])
     if isinstance(extra_compile_args, dict):
         for compiler in ['cxx', 'nvcc']:
             if compiler not in extra_compile_args:
                 extra_compile_args[compiler] = []
 
-    if IS_WINDOWS:
-        # TODO(zhouwei): may append compile flags in future
+    if IS_WINDOWS:  # windows 下不需要 extra_link_args
+        # TODO(zhouwei): may append compile flags in the future
         pass
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
@@ -564,11 +585,15 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         # On Linux, GCC support '-l:xxx.so' to specify the library name
         # without `lib` prefix.
         if OS_NAME.startswith('linux'):
-            extra_link_args.append('-l:{}'.format(_get_core_name()))
+            extra_link_args.append(
+                '-l:{}'.format(_get_core_name())
+            )  # -l:libpaddle.pyd 或者 -l:libpaddle.so
         ########################### MacOS Platform ###########################
         else:
             # See _reset_so_rpath for details.
-            extra_link_args.append('-Wl,-rpath,{}'.format(_get_fluid_path()))
+            extra_link_args.append(
+                '-Wl,-rpath,{}'.format(_get_fluid_path())
+            )  # paddle/fluid 目录
             # On MacOS, ld don't support `-l:xx`, so we create a
             # liblibpaddle.dylib symbol link.
             lib_core_name = create_sym_link_if_not_exist()
@@ -586,6 +611,7 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
         kwargs['extra_link_args'] = extra_link_args
 
         # add runtime library dirs
+        # runtime_library_dirs 的值与 library_dirs 相同
         runtime_library_dirs = kwargs.get('runtime_library_dirs', [])
         runtime_library_dirs.extend(find_paddle_libraries(use_cuda))
         kwargs['runtime_library_dirs'] = runtime_library_dirs
@@ -747,11 +773,17 @@ def find_rocm_includes():
     return [os.path.join(rocm_home, 'include')]
 
 
+# 获得如下的 include 目录：
+# 1. 包含 paddle C++ 头文件的目录；
+# 2. paddle include 需要的 third_party 目录；
+# 3. 如果使用 cuda，添加 rocm/cuda 需要的 include 目录
+# 4. 如果是 MAC 系统，尝试添加 include/c++/v1/ 目录
 def find_paddle_includes(use_cuda=False):
     """
     Return Paddle necessary include dir path.
     """
     # pythonXX/site-packages/paddle/include
+    # 获得包含 paddle C++ 头文件的目录
     paddle_include_dir = get_include()
     third_party_dir = os.path.join(paddle_include_dir, 'third_party')
     include_dirs = [paddle_include_dir, third_party_dir]
@@ -825,6 +857,10 @@ def find_rocm_libraries():
     return rocm_lib_dir
 
 
+# 包含下述 lib 文件
+# 1. 包含 paddle C++ 头文件的 libs
+# 2. rocm/cuda 相关的 libs
+# 3. pythonXX/site-packages/paddle/fluid 搜索 libpaddle.so
 def find_paddle_libraries(use_cuda=False):
     """
     Return Paddle necessary library dir path.
@@ -855,6 +891,9 @@ def add_compile_flag(extra_compile_args, flags):
         extra_compile_args.extend(flags)
 
 
+######################################################################################
+# 本注释后的代码，与 load module 有关，执行 cpp_extension.py 的 load 函数，会调用下述的所有代码
+######################################################################################
 def is_cuda_file(path):
 
     cuda_suffix = set(['.cu'])
@@ -974,6 +1013,7 @@ def _generate_python_module(
     log_v("generate api file: {}".format(api_file), verbose)
 
     # delete the temp file before exit python process
+    # 在 python 解释器中注册一个退出函数，这个函数在解释器正常终止时自动执行,一般用来做一些资源清理的操作
     atexit.register(lambda: remove_if_exit(api_file))
 
     # write into .py file with RWLockc
@@ -1069,6 +1109,7 @@ def _load_module_from_file(api_file_path, module_name, verbose=False):
     ext_name = "_paddle_cpp_extension_" + module_name
 
     # load module with RWLock
+    # https://www.sohu.com/a/121382132_374240 —— python3.6 废弃了这个模块？
     loader = machinery.SourceFileLoader(ext_name, api_file_path)
     module = loader.load_module()
 
@@ -1221,6 +1262,7 @@ def parse_op_name_from(sources):
         pattern = re.compile(r'PD_BUILD_OP\(([^,\)]+)\)')
         content = re.sub(r'\s|\t|\n', '', content)
         op_name = pattern.findall(content)
+        # 只解析 op 名，不包括 op_grad 信息
         op_name = set([re.sub('_grad', '', name) for name in op_name])
 
         return op_name

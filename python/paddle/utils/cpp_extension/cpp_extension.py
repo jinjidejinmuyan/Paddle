@@ -1,3 +1,4 @@
+# 【2022.11.25 看完】
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +55,6 @@ from .extension_utils import (
     IS_WINDOWS,
     OS_NAME,
     MSVC_COMPILE_FLAGS,
-    MSVC_COMPILE_FLAGS,
 )
 from .extension_utils import CLANG_COMPILE_FLAGS, CLANG_LINK_FLAGS
 
@@ -81,9 +81,9 @@ def setup(**attr):
     mainly includes how to compile shared library, automatically generate python API
     and install it into site-package. It supports using customized operators directly with
     ``import`` statement.
-
+    隐藏了下述概念: 必须的编译选项、头文件的 include 路径、链接 flags
     It encapsulates the python built-in ``setuptools.setup`` function and keeps arguments
-    and usage same as the native interface. Meanwhile, it hiddens Paddle inner framework
+    and usage same as the native interface. Meanwhile, it hides Paddle inner framework
     concepts, such as necessary compiling flags, included paths of head files, and linking
     flags. It also will automatically search and valid local environment and versions of
     ``cc(Linux)`` , ``cl.exe(Windows)`` and ``nvcc`` , then compiles customized operators
@@ -102,13 +102,13 @@ def setup(**attr):
 
     Note:
 
-        1. Currently we support Linux, MacOS and Windows platfrom.
-        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+        1. Currently we support Linux, MacOS and Windows platform.
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking candidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).
 
-
+    # JIT 的方式每次运行都要 build 一次，而 setup 的方式只需要 install 一次，以后都可以调用
     Compared with Just-In-Time ``load`` interface, it only compiles once by executing
     ``python setup.py install`` . Then customized operators API will be available everywhere
     after importing it.
@@ -154,16 +154,21 @@ def setup(**attr):
 
 
     Args:
+        安装 package 的名称
         name(str): Specify the name of shared library file and installed python package.
+        指定自定义算子源文件、编译选项
         ext_modules(Extension): Specify the Extension instance including customized operator source files, compiling flags et.al.
                                 If only compile operator supporting CPU device, please use ``CppExtension`` ; If compile operator
                                 supporting CPU and GPU devices, please use ``CUDAExtension`` .
+        指定额外的第三方库路径
         include_dirs(list[str], optional): Specify the extra include directories to search head files. The interface will automatically add
                                  ``site-package/paddle/include`` . Please add the corresponding directory path if including third-party
                                  head files. Default is None.
+        额外的编译选项
         extra_compile_args(list[str] | dict, optional): Specify the extra compiling flags such as ``-O3`` . If set ``list[str]`` , all these flags
-                                will be applied for ``cc`` and ``nvcc`` compiler. It support specify flags only applied ``cc`` or ``nvcc``
+                                will be applied for ``cc`` and ``nvcc`` compiler. It supports specify flags only applied ``cc`` or ``nvcc``
                                 compiler using dict type with ``{'cxx': [...], 'nvcc': [...]}`` . Default is None.
+        指定 setuptools.setup 的其他选项
         **attr(dict, optional): Specify other arguments same as ``setuptools.setup`` .
 
     Returns:
@@ -209,7 +214,7 @@ def setup(**attr):
     ), "Required only one Extension, but received {}. If you want to compile multi operators, you can include all necessary source files in one Extension.".format(
         len(ext_modules)
     )
-    # replace Extension.name with attr['name] to keep consistant with Package name.
+    # replace Extension.name with attr['name] to keep consistent with Package name.
     for ext_module in ext_modules:
         ext_module.name = attr['name']
 
@@ -261,7 +266,7 @@ def CppExtension(sources, *args, **kwargs):
 
 
     Note:
-        It is mainly used in ``setup`` and the nama of built shared library keeps same
+        It is mainly used in ``setup`` and the name of built shared library keeps same
         as ``name`` argument specified in ``setup`` interface.
 
 
@@ -275,7 +280,7 @@ def CppExtension(sources, *args, **kwargs):
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=False)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
-    # be replaced as `setup.name` to keep consistant with package. Because we allow
+    # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
     name = kwargs.get('name', None)
@@ -327,7 +332,7 @@ def CUDAExtension(sources, *args, **kwargs):
     """
     kwargs = normalize_extension_kwargs(kwargs, use_cuda=True)
     # Note(Aurelius84): While using `setup` and `jit`, the Extension `name` will
-    # be replaced as `setup.name` to keep consistant with package. Because we allow
+    # be replaced as `setup.name` to keep consistent with package. Because we allow
     # users can not specific name in Extension.
     # See `paddle.utils.cpp_extension.setup` for details.
     name = kwargs.get('name', None)
@@ -344,9 +349,13 @@ def _generate_extension_name(sources):
     assert len(sources) > 0, "source files is empty"
     file_prefix = []
     for source in sources:
+        # 返回文件名
         source = os.path.basename(source)
+        # 分割路径，返回路径名和文件扩展名的元组
         filename, _ = os.path.splitext(source)
         # Use list to generate same order.
+        # 找到当前文件的名称
+        # 如果是 relu.cc 和 relu.cu 会重复，所以要有个 if 判断
         if filename not in file_prefix:
             file_prefix.append(filename)
 
@@ -362,7 +371,7 @@ class BuildExtension(build_ext, object):
     @classmethod
     def with_options(cls, **options):
         """
-        Returns a BuildExtension subclass containing use-defined options.
+        Returns a BuildExtension subclass containing user-defined options.
         """
 
         class cls_with_options(cls):
@@ -370,11 +379,11 @@ class BuildExtension(build_ext, object):
                 kwargs.update(options)
                 cls.__init__(self, *args, **kwargs)
 
-        return cls_with_options
+        return cls_with_options  # 返回了一个类
 
     def __init__(self, *args, **kwargs):
         """
-        Attributes is initialized with following oreder:
+        Attributes is initialized with following order:
 
             1. super().__init__()
             2. initialize_options(self)
@@ -424,13 +433,14 @@ class BuildExtension(build_ext, object):
         else:
             original_compile = self.compiler._compile
 
+        # 添加 cflags 编译选项，并且对于 CUDA： self.compiler.set_executable('compiler_so', nvcc_cmd)
         def unix_custom_single_compiler(
             obj, src, ext, cc_args, extra_postargs, pp_opts
         ):
             """
-            Monkey patch machanism to replace inner compiler to custom complie process on Unix platform.
+            Monkey patch mechanism to replace inner compiler to custom compile process on Unix platform.
             """
-            # use abspath to ensure no warning and don't remove deecopy because modify params
+            # use abspath to ensure no warning and don't remove deepcopy because modify params
             # with dict type is dangerous.
             src = os.path.abspath(src)
             cflags = copy.deepcopy(extra_postargs)
@@ -494,6 +504,7 @@ class BuildExtension(build_ext, object):
                 # restore original_compiler
                 self.compiler.set_executable('compiler_so', original_compiler)
 
+        # 粗略看下来，是为了往 cmd 中添加编译选项和命令
         def win_custom_single_compiler(
             sources,
             output_dir=None,
@@ -571,7 +582,6 @@ class BuildExtension(build_ext, object):
                 # Append this macor only when jointly compiling .cc with .cu
                 if not is_cuda_file(src) and self.contain_cuda_file:
                     cmd.append('-DPADDLE_WITH_CUDA')
-
                 return original_spawn(cmd)
 
             try:
@@ -589,9 +599,10 @@ class BuildExtension(build_ext, object):
             finally:
                 self.compiler.spawn = original_spawn
 
+        # 编译时会将 .cc/.cu 都编译成 .o 文件，为了避免重名，将 .cu 文件 rename 为 .cu.o
         def object_filenames_with_cuda(origina_func, build_directory):
             """
-            Decorated the function to add customized naming machanism.
+            Decorated the function to add customized naming mechanism.
             Originally, both .cc/.cu will have .o object output that will
             bring file override problem. Use .cu.o as CUDA object suffix.
             """
@@ -624,6 +635,7 @@ class BuildExtension(build_ext, object):
 
             return wrapper
 
+        # 更改 windows 和 unix 系统对应的编译器
         # customized compile process
         if self.compiler.compiler_type == 'msvc':
             self.compiler.compile = win_custom_single_compiler
@@ -633,17 +645,20 @@ class BuildExtension(build_ext, object):
         self.compiler.object_filenames = object_filenames_with_cuda(
             self.compiler.object_filenames, self.build_lib
         )
+        # 记录每个 custom_op 对应的 .so 文件
         self._record_op_info()
 
         print("Compiling user custom op, it will cost a few seconds.....")
+        # 使用自定义的 BuildExtension 类，编译自定义算子
         build_ext.build_extensions(self)
 
         # Reset runtime library path on MacOS platform
         so_path = self.get_ext_fullpath(self.extensions[0]._full_name)
         _reset_so_rpath(so_path)
 
+    # 重写了 class build_ext 的 get_ext_filename 函数，做函数名映射
     def get_ext_filename(self, fullname):
-        # for example: custommed_extension.cpython-37m-x86_64-linux-gnu.so
+        # for example: customized_extension.cpython-37m-x86_64-linux-gnu.so
         ext_name = super().get_ext_filename(fullname)
         split_str = '.'
         name_items = ext_name.split(split_str)
@@ -654,11 +669,13 @@ class BuildExtension(build_ext, object):
                 len(name_items)
             )
             name_items.pop(-2)
+            # 返回 customized_extension.so
             ext_name = split_str.join(name_items)
 
-        # custommed_extension.dylib
+        # customized_extension.dylib
         if OS_NAME.startswith('darwin'):
             name_items[-1] = 'dylib'
+            # 返回 customized_extension.dylib
             ext_name = split_str.join(name_items)
         return ext_name
 
@@ -712,13 +729,14 @@ class BuildExtension(build_ext, object):
         so_path = os.path.abspath(outputs[0])
         so_name = os.path.basename(so_path)
 
-        for i, extension in enumerate(self.extensions):
+        for _, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
             if not self.contain_cuda_file:
                 self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:
+                # info 信息在此处添加的，相当于所有的 op 都映射到了一个 .so 文件
                 CustomOpInfo.instance().add(
                     op_name, so_name=so_name, so_path=so_path
                 )
@@ -726,7 +744,7 @@ class BuildExtension(build_ext, object):
 
 class EasyInstallCommand(easy_install, object):
     """
-    Extend easy_intall Command to control the behavior of naming shared library
+    Extend easy_install Command to control the behavior of naming shared library
     file.
 
     NOTE(Aurelius84): This is a hook subclass inherited Command used to rename shared
@@ -770,7 +788,7 @@ class BuildCommand(build, object):
     @classmethod
     def with_options(cls, **options):
         """
-        Returns a BuildCommand subclass containing use-defined options.
+        Returns a BuildCommand subclass containing user-defined options.
         """
 
         class cls_with_options(cls):
@@ -837,7 +855,7 @@ def load(
     Note:
 
         1. Currently we support Linux, MacOS and Windows platfrom.
-        2. On Linux platform, we recommend to use GCC 8.2 as soft linking condidate of ``/usr/bin/cc`` .
+        2. On Linux platform, we recommend to use GCC 8.2 as soft linking candidate of ``/usr/bin/cc`` .
            Then, Use ``which cc`` to ensure location of ``cc`` and using ``cc --version`` to ensure linking
            GCC version.
         3. On Windows platform, we recommend to install `` Visual Studio`` (>=2017).

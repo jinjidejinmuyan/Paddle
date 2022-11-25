@@ -453,6 +453,7 @@ static T PyObjectCast(PyObject *obj) {
 
 using PyNameVarBaseMap = std::unordered_map<std::string, py::handle>;
 
+// 将 py::handle 转换为 imperative::VarBase
 static std::vector<std::shared_ptr<imperative::VarBase>> GetVarBaseList(
     const PyNameVarBaseMap &state_dict) {
   std::vector<std::shared_ptr<imperative::VarBase>> vec_res;
@@ -604,6 +605,34 @@ static int GetNCCLVersion() {
 }
 #endif
 
+static void PYBIND11_CONCAT(pybind11_init_, libpaddle)(pybind11::module &);
+PYBIND11_PLUGIN_IMPL(libpaddle) {
+  PYBIND11_CHECK_PYTHON_VERSION
+  auto m = pybind11::module(PYBIND11_TOSTRING(libpaddle));
+  try {
+    PYBIND11_CONCAT(pybind11_init_, libpaddle)(m);
+    return m.ptr();
+  }
+  PYBIND11_CATCH_INIT_EXCEPTIONS
+}
+void PYBIND11_CONCAT(pybind11_init_, libpaddle)(pybind11::module &m) {}
+
+static PyObject *pybind11_init_wrapper();
+extern "C" PYBIND11_EXPORT void initlibpaddle();
+extern "C" PYBIND11_EXPORT void initlibpaddle() {
+  (void)pybind11_init_wrapper();
+}
+PyObject *pybind11_init_wrapper() {
+  PYBIND11_CHECK_PYTHON_VERSION
+  auto m = pybind11::module(PYBIND11_TOSTRING(libpaddle));
+  try {
+    PYBIND11_CONCAT(pybind11_init_, libpaddle)(m);
+    return m.ptr();
+  }
+  PYBIND11_CATCH_INIT_EXCEPTIONS
+}
+
+// 链接库为 libpaddle，在链接库中定义类和函数
 PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
@@ -855,7 +884,7 @@ PYBIND11_MODULE(libpaddle, m) {
 
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
-
+  // 此处为 python 端提供了 add_inputs、add_outputs、add_attr 接口
   py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
       m, "CustomOpKernelContext", R"DOC()DOC");
   g_custom_op_kernel_ctx_pytype =
@@ -1717,7 +1746,11 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
+  // 此处加载自定义算子的 .so 文件，将 Load 出来的 MetaInfo 插入到 Controller
+  // 的全局 InfoMap 中
   m.def("load_op_meta_info_and_register_op", [](const std::string dso_name) {
+    // LoadOpMetaInfoAndRegisterOp 函数返回值 std::unordered_map<std::string,
+    // std::vector<OpMetaInfo>>
     egr::Controller::Instance().MergeOpMetaInfoMap(
         framework::LoadOpMetaInfoAndRegisterOp(dso_name));
   });

@@ -1,3 +1,4 @@
+# 【2022.11.23 看完】——主要是检查 abi 工具的正确性（abi 工具涉及到不同平台对应编译器版本的检查）
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
