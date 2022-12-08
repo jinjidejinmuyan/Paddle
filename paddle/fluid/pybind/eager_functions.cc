@@ -261,14 +261,21 @@ static void ConstructFwdAndBwdMap(
     return;
   } else {
     VLOG(7) << "Construct CustomEdgesSlotMap ";
+    // {"Value", "SpatialShapes", "LevelIndex", "SamplingLocations",
+    // "AttentionWeights"}
     auto inputs_names =
         paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[0]);
+    // {"Out"}
     auto outputs_names =
         paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[0]);
     auto attrs_names =
         paddle::framework::OpMetaInfoHelper::GetAttrs(vec_map[0]);
+    // {paddle::Grad("Value"), paddle::Grad("SamplingLocations"),
+    // paddle::Grad("AttentionWeights")}
     auto grad_outputs_names =
         paddle::framework::OpMetaInfoHelper::GetOutputs(vec_map[1]);
+    // {"Value", "SpatialShapes", "LevelIndex", "SamplingLocations",
+    // "AttentionWeights", paddle::Grad("Out")}
     auto grad_inputs_names =
         paddle::framework::OpMetaInfoHelper::GetInputs(vec_map[1]);
     auto grad_attrs_names =
@@ -283,6 +290,10 @@ static void ConstructFwdAndBwdMap(
         inputs_names.size(),
         paddle::platform::errors::InvalidArgument(
             "Grad outputs num should be less equal than forward inputs num."));
+    // [0]: {input : grad_output}
+    // [1, 2, 3]: {XXX: grad_input}
+    // {paddle::Grad("Value"), paddle::Grad("SamplingLocations"),
+    // paddle::Grad("AttentionWeights")}
     for (size_t i = 0; i < grad_outputs_names.size(); i++) {
       size_t end = grad_outputs_names[i].find("@GRAD");
       PADDLE_ENFORCE_NE(
@@ -297,6 +308,7 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " inputs: " << inputs_names[j] << " related to No." << i
                   << " grad_outputs: " << grad_outputs_names[i];
+          // input_grad: {j : i} = {input: input@grad}
           in_out_map[op_type][0][0][j] = i;
         }
       }
@@ -310,6 +322,7 @@ static void ConstructFwdAndBwdMap(
             VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                     << " outputs: " << outputs_names[j] << " related to No."
                     << i << " grad_inputs's grad: " << grad_inputs_names[i];
+            // output_grad: {j : i} = {out: out@grad}
             in_out_map[op_type][0][1][j] = i;
           }
         }
@@ -323,6 +336,7 @@ static void ConstructFwdAndBwdMap(
                       << " outputs: " << outputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd outputs: " << grad_inputs_names[i];
+              // output_grad: {j: i} = {out: input}
               in_out_map[op_type][0][2][j] = i;
             }
           }
@@ -333,6 +347,7 @@ static void ConstructFwdAndBwdMap(
                       << " inputs: " << inputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd inputs: " << grad_inputs_names[i];
+              // output_grad: {j : i} = {}
               in_out_map[op_type][0][3][j] = i;
             }
           }
@@ -431,7 +446,7 @@ static PyObject* eager_api_jit_function_call(PyObject* self,
 }
 
 // 新动态图调用自定义算子的接口函数，前向执行逻辑和反向构建图逻辑
-static PyObject* eager_api_run_custom_op(PyObject* self,
+static PyObject* eager_api_run_costum_op(PyObject* self,
                                          PyObject* args,
                                          PyObject* kwargs) {
   EAGER_TRY
@@ -443,6 +458,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     eager_gil_scoped_release guard;
     VLOG(7) << "Get things for python for Custom Op: " << op_type
             << ", trace_backward is: " << trace_backward;
+    // 通过 MetaInfoMap 来调用
     auto meta_info_map = egr::Controller::Instance().GetOpMetaInfoMap();
     PADDLE_ENFORCE_NE(
         meta_info_map.find(op_type),
@@ -465,9 +481,9 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
     std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
     VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
-    ins_auto_grad_metas.resize(ctx.InputRange().size());
+    ins_auto_grad_metas.resize(ctx.InputRange().size());  // 5
     VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
-    outs_auto_grad_metas.resize(ctx.OutputRange().size());
+    outs_auto_grad_metas.resize(ctx.OutputRange().size());  // 1
 
     for (size_t i = 0; i < ctx.InputRange().size(); i++) {
       ins_auto_grad_metas[i] =
@@ -491,27 +507,39 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
         egr::EagerUtils::PassStopGradient(false, &(outs_auto_grad_metas[i]));
       }
-      auto grad_node = std::make_shared<egr::RunCustomOpNode>(
-          outs_auto_grad_metas.size(), ins_auto_grad_metas.size(), op_type);
+      auto grad_node =
+          std::make_shared<egr::RunCustomOpNode>(outs_auto_grad_metas.size(),
+                                                 ins_auto_grad_metas.size(),
+                                                 op_type);  // 1, 5
+      // {: grad_input} (ins1_grad, ...), {: grad_output} (outs1_grad, ins1,
+      // ..., outs)
+      // {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}}
       auto slot_map =
           egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type);
       // Prepare Grad outputs
       size_t no_grad_cnt = 0;
-      for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {
+      for (size_t i = 0; i < ins_auto_grad_metas.size(); i++) {  // 5
         const std::vector<paddle::experimental::Tensor>& in_tensors =
             ctx.InputsBetween(ctx.InputRangeAt(i).first,
                               ctx.InputRangeAt(i).second);
 
         if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
+          // input: ins_grad
           grad_node->SetGradOutMeta(in_tensors, slot_map[0][0][i]);
+          VLOG(1) << "DEBUG fwd_grad set ins tensor map " << i << " to "
+                  << slot_map[0][0][i];
         } else {
-          grad_node->SetGradOutMeta(
-              in_tensors, ins_auto_grad_metas.size() - 1 - no_grad_cnt);
+          grad_node->SetGradOutMeta(in_tensors,
+                                    ins_auto_grad_metas.size() - 1 -
+                                        no_grad_cnt);  // 5 - 1 - no_grad_cnt
+          VLOG(1) << "DEBUG fwd_grad set ins tensor map " << i << " to "
+                  << ins_auto_grad_metas.size() - 1 -
+                         no_grad_cnt;  // 此处可能有问题
           no_grad_cnt++;
         }
       }
       // Prepare Grad inputs with grad of fwd outputs
-      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {
+      for (size_t i = 0; i < outs_auto_grad_metas.size(); i++) {  // 1
         const std::vector<paddle::experimental::Tensor>& out_tensors =
             ctx.OutputsBetweeen(ctx.OutputRangeAt(i).first,
                                 ctx.OutputRangeAt(i).second);
@@ -536,6 +564,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       for (auto it = slot_map[0][3].begin(); it != slot_map[0][3].end(); it++) {
         VLOG(7) << "Prepare fwd_ins: " << it->first
                 << " to grad_inputs: " << it->second;
+        // {: ins}
         grad_node->fwd_ins[it->second] =
             egr::RunCustomOpNode::ConstructTensorWrapper(
                 ctx.InputsBetween(ctx.InputRangeAt(it->first).first,

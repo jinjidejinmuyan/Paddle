@@ -172,10 +172,17 @@ RunCustomOpNode::operator()(
     bool create_graph,
     bool is_new_grad) {  // NOLINT
   paddle::CustomOpKernelContext ctx;
+  // .Inputs({"Value", "SpatialShapes", "LevelIndex", "SamplingLocations",
+  // "AttentionWeights", paddle::Grad("Out")})
   auto grad_inputs_name = paddle::framework::OpMetaInfoHelper::GetInputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
+  // .Outputs({paddle::Grad("Value"), paddle::Grad("SamplingLocations"),
+  // paddle::Grad("AttentionWeights")})
   auto grad_outputs_names = paddle::framework::OpMetaInfoHelper::GetOutputs(
       egr::Controller::Instance().GetOpMetaInfoMap().at(op_type_)[1]);
+  // std::vector<std::vector<std::unordered_map<int, int>>>, map.size() == 2,
+  // grad & double_grad std::vector<std::unordered_map<int, int>> 代表什么含义？
+  // {{grad_outputs}, {grad_inputs}, {input}, {output}, {attrs}},
   auto map = egr::Controller::Instance().GetCustomEdgesSlotMap().at(op_type_);
   auto kernel_map = egr::Controller::Instance().GetOpMetaInfoMap();
 
@@ -208,6 +215,9 @@ RunCustomOpNode::operator()(
   }
   VLOG(6) << "Prepare Grad attrs";
   ctx.EmplaceBackAttrs(attrs_);
+  // bwd_out_meta_ is used to record Grad output info for backward
+  // paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
+  // bwd_out_meta_;
   paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                        kSlotSmallVectorSize>
       outs(OutputMeta().size());
@@ -217,18 +227,20 @@ RunCustomOpNode::operator()(
   VLOG(6) << "Prepare Grad outputs for size: " << grad_outputs_names.size();
   for (size_t i = 0; i < OutputMeta().size(); i++) {
     if (map[0][0].find(i) != map[0][0].end()) {
+      int idx = map[0][0][i];
       VLOG(7) << "Insert grad outputs: " << i
-              << " with size: " << OutputMeta()[i].size()
-              << " to tmp_outputs: " << map[0][0][i];
-      for (size_t j = 0; j < OutputMeta()[i].size(); j++) {
-        outs[i].emplace_back(/* init it incase of copy nullptr of shared_ptr */
-                             std::make_shared<phi::DenseTensor>(
-                                 phi::DataType::UNDEFINED),
-                             egr::Controller::Instance().GenerateUniqueName(
-                                 "custom_tmp_grad"));
-        egr::EagerUtils::autograd_meta(&(outs[i][j]));
+              << " with size: " << OutputMeta()[idx].size()
+              << " to tmp_outputs: " << idx;
+      for (size_t j = 0; j < OutputMeta()[idx].size(); j++) {
+        outs[idx]
+            .emplace_back(/* init it incase of copy nullptr of shared_ptr */
+                          std::make_shared<phi::DenseTensor>(
+                              phi::DataType::UNDEFINED),
+                          egr::Controller::Instance().GenerateUniqueName(
+                              "custom_tmp_grad"));
+        egr::EagerUtils::autograd_meta(&(outs[idx][j]));
       }
-      tmp_outs[map[0][0][i]] = outs[i];
+      tmp_outs[idx] = outs[idx];
     }
   }
   for (size_t i = 0; i < tmp_outs.size(); i++) {
@@ -244,9 +256,9 @@ RunCustomOpNode::operator()(
   std::vector<std::vector<egr::AutogradMeta*>> ins_auto_grad_metas;
   std::vector<std::vector<egr::AutogradMeta*>> outs_auto_grad_metas;
   VLOG(7) << "We got slot num of ins is: " << ctx.InputRange().size();
-  ins_auto_grad_metas.resize(ctx.InputRange().size());
+  ins_auto_grad_metas.resize(ctx.InputRange().size());  // 6
   VLOG(7) << "We got slot num of outs is: " << ctx.OutputRange().size();
-  outs_auto_grad_metas.resize(ctx.OutputRange().size());
+  outs_auto_grad_metas.resize(ctx.OutputRange().size());  // 3
 
   for (size_t i = 0; i < ctx.InputRange().size(); i++) {
     ins_auto_grad_metas[i] =
