@@ -55,6 +55,7 @@ void relu_cpu_double_backward_kernel(const data_t* out_data,
 }
 
 std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
+  std::cout << "Running relu_cpu_forward" << std::endl;
   CHECK_CPU_INPUT(x);
   auto out = paddle::empty_like(x);
 
@@ -70,6 +71,7 @@ std::vector<paddle::Tensor> relu_cpu_forward(const paddle::Tensor& x) {
 std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
                                               const paddle::Tensor& out,
                                               const paddle::Tensor& grad_out) {
+  std::cout << "Running relu_cpu_backward" << std::endl;
   auto grad_x = paddle::empty_like(x);
 
   PD_DISPATCH_FLOATING_TYPES(out.type(), "relu_cpu_backward", ([&] {
@@ -85,6 +87,7 @@ std::vector<paddle::Tensor> relu_cpu_backward(const paddle::Tensor& x,
 
 std::vector<paddle::Tensor> relu_cpu_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx) {
+  std::cout << "Running relu_cpu_double_backward" << std::endl;
   CHECK_CPU_INPUT(out);
   CHECK_CPU_INPUT(ddx);
   auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
@@ -101,6 +104,7 @@ std::vector<paddle::Tensor> relu_cpu_double_backward(
 }
 
 std::vector<paddle::Tensor> relu_custom_forward(const paddle::Tensor& x) {
+  std::cout << "Running relu_custom_forward" << std::endl;
   CHECK_CUSTOM_INPUT(x);
   auto out = paddle::relu(x);
   return {out};
@@ -110,6 +114,7 @@ std::vector<paddle::Tensor> relu_custom_backward(
     const paddle::Tensor& x,
     const paddle::Tensor& out,
     const paddle::Tensor& grad_out) {
+  std::cout << "Running relu_custom_backward" << std::endl;
   CHECK_CUSTOM_INPUT(x);
   CHECK_CUSTOM_INPUT(out);
   auto grad_x = paddle::empty_like(x, x.dtype(), x.place());
@@ -124,6 +129,7 @@ std::vector<paddle::Tensor> relu_custom_backward(
 
 std::vector<paddle::Tensor> relu_custom_double_backward(
     const paddle::Tensor& out, const paddle::Tensor& ddx) {
+  std::cout << "Running relu_custom_double_backward" << std::endl;
   CHECK_CUSTOM_INPUT(out);
   auto ddout = paddle::empty(out.shape(), out.dtype(), out.place());
   auto ones =

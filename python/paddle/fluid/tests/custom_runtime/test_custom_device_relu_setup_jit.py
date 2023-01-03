@@ -18,10 +18,10 @@ import unittest
 
 import numpy as np
 
-import paddle
-
 
 def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
+    import paddle
+
     paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
     paddle.set_device(device)
 
@@ -42,6 +42,7 @@ def custom_relu_dynamic(func, device, dtype, np_x, use_func=True):
 
 
 def custom_relu_static(func, device, dtype, np_x, use_func=True):
+    import paddle
     import paddle.static as static
 
     paddle.enable_static()
@@ -68,6 +69,7 @@ def custom_relu_static(func, device, dtype, np_x, use_func=True):
 
 
 def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
+    import paddle
     import paddle.static as static
 
     paddle.enable_static()
@@ -98,6 +100,8 @@ def custom_relu_static_pe(func, device, dtype, np_x, use_func=True):
 
 
 def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
+    import paddle
+
     paddle.set_device(device)
     paddle.fluid.set_flags({"FLAGS_retain_grad_for_all_tensor": True})
 
@@ -126,9 +130,20 @@ def custom_relu_double_grad_dynamic(func, device, dtype, np_x, use_func=True):
 
 class TestNewCustomOpSetUpInstall(unittest.TestCase):
     def setUp(self):
-        import custom_relu_module_setup
+        # compile so and set to current path
+        self.cur_dir = os.path.dirname(os.path.abspath(__file__))
 
-        self.custom_op = custom_relu_module_setup.custom_relu
+        # `import paddle` loads custom_cpu.so, hence we must import paddle after finishing build PaddleCustomDevice
+        import paddle
+
+        custom_module = paddle.utils.cpp_extension.load(
+            name='custom_device_relu',
+            sources=['custom_relu_op.cc'],
+            extra_cxx_cflags=["-w", "-g"],  # test for cc flags
+            # build_directory=self.cur_dir,
+            verbose=True,
+        )
+        self.custom_op = custom_module.custom_relu
 
         self.dtypes = ["float32", "float64"]
         self.device = "custom_cpu"
@@ -224,6 +239,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             )
 
     def _test_with_dataloader(self):
+        import paddle
         from paddle.vision.transforms import Compose, Normalize
 
         paddle.set_device(self.device)
