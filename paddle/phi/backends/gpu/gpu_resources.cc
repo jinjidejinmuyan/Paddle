@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_resources.h"
 
+#include <set>
+
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
@@ -31,6 +33,11 @@
 #endif  // !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_HIP
+#include "paddle/phi/backends/dynload/rocsparse.h"
+#endif
+
+#include "glog/logging.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
 #include "paddle/phi/core/enforce.h"
@@ -56,6 +63,28 @@ void InitGpuProperties(Place place,
       backends::gpu::GetGPUMaxThreadsPerBlock(place.GetDeviceId());
   *driver_version = backends::gpu::GetGPUDriverVersion(place.GetDeviceId());
   *runtime_version = backends::gpu::GetGPURuntimeVersion(place.GetDeviceId());
+
+  const gpuDeviceProp& prop =
+      backends::gpu::GetDeviceProperties(place.GetDeviceId());
+
+#ifdef PADDLE_WITH_CUDA
+  static const std::set<int> compiled_archs{CUDA_REAL_ARCHS};
+  // Make sure compiled cuda arch is as same as runtime cuda arch.
+  if (compiled_archs.find(*compute_capability) == compiled_archs.cend() &&
+      compiled_archs.find(prop.major * 10) == compiled_archs.cend()) {
+    static std::atomic<bool> once_flag(false);
+    if (!once_flag.exchange(true)) {
+      std::string compile_arch_str = "";
+      for (const int32_t& arch : compiled_archs) {
+        compile_arch_str += std::to_string(arch) + " ";
+      }
+      LOG(WARNING) << "Paddle with runtime capability " << *compute_capability
+                   << " is not compatible with Paddle installation with arch: "
+                   << compile_arch_str
+                   << ". Please check compiled version of Paddle. ";
+    }
+  }
+#endif
 
   // TODO(wilber): glog may be replaced in the future?
   LOG_FIRST_N(WARNING, 1) << "Please NOTE: device: "
@@ -270,6 +299,9 @@ void InitSparseHandle(sparseHandle_t* handle, gpuStream_t stream) {
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseCreate(handle));
   PADDLE_RETRY_CUDA_SUCCESS(dynload::cusparseSetStream(*handle, stream));
 #endif
+#elif defined(PADDLE_WITH_HIP)
+  phi::dynload::rocsparse_create_handle(handle);
+  phi::dynload::rocsparse_set_stream(*handle, stream);
 #endif
 }
 
@@ -281,6 +313,11 @@ void DestroySparseHandle(sparseHandle_t handle) {
     handle = nullptr;
   }
 #endif
+#elif defined(PADDLE_WITH_HIP)
+  if (handle != nullptr) {
+    phi::dynload::rocsparse_destroy_handle(handle);
+    handle = nullptr;
+  }
 #endif
 }
 

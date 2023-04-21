@@ -63,12 +63,10 @@ def _check_normalization(norm):
 def _check_fft_n(n):
     if not isinstance(n, int):
         raise ValueError(
-            "Invalid FFT argument n({}), it shoule be an integer.".format(n)
+            f"Invalid FFT argument n({n}), it shoule be an integer."
         )
     if n <= 0:
-        raise ValueError(
-            "Invalid FFT argument n({}), it should be positive.".format(n)
-        )
+        raise ValueError(f"Invalid FFT argument n({n}), it should be positive.")
 
 
 def _check_fft_shape(x, s):
@@ -85,17 +83,13 @@ def _check_fft_shape(x, s):
         )
     for size in s:
         if not isinstance(size, int) or size <= 0:
-            raise ValueError(
-                "FFT sizes {} contains invalid value ({})".format(s, size)
-            )
+            raise ValueError(f"FFT sizes {s} contains invalid value ({size})")
 
 
 def _check_fft_axis(x, axis):
     ndim = x.ndim
     if not isinstance(axis, int):
-        raise ValueError(
-            "Invalid FFT axis ({}), it shoule be an integer.".format(axis)
-        )
+        raise ValueError(f"Invalid FFT axis ({axis}), it shoule be an integer.")
     if axis < -ndim or axis >= ndim:
         raise ValueError(
             "Invalid FFT axis ({}), it should be in range [-{}, {})".format(
@@ -166,9 +160,7 @@ def _normalize_axes(x, axes):
 
 def _check_at_least_ndim(x, rank):
     if x.ndim < rank:
-        raise ValueError(
-            "The rank of the input ({}) should >= {}".format(x.ndim, rank)
-        )
+        raise ValueError(f"The rank of the input ({x.ndim}) should >= {rank}")
 
 
 # public APIs 1d
@@ -786,9 +778,9 @@ def hfftn(x, s=None, axes=None, norm="backward", name=None):
 
     This function calculates the n-D discrete Fourier transform of Hermite symmetric
     complex input on any axis in M-D array by fast Fourier transform (FFT).
-    In other words, ``ihfftn(hfftn(x, s)) == x is within the numerical accuracy range.
+    In other words, ``ihfftn(hfftn(x, s)) == x`` is within the numerical accuracy range.
     (``s`` here are ``x.shape`` and ``s[-1] = x.shape[- 1] * 2 - 1``. This is necessary
-    for the same reason that ``irfft` requires ``x.shape``.)
+    for the same reason that ``irfft`` requires ``x.shape``.)
 
     Args:
         x (Tensor): The input data. It's a Tensor type.
@@ -1275,6 +1267,8 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
             #  Tensor(shape=[5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #           [ 0.        ,  0.40000001,  0.80000001, -0.80000001, -0.40000001])
     """
+    if d * n == 0:
+        raise ValueError("d or n should not be 0.")
 
     dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)
@@ -1324,6 +1318,8 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
             #           [0.        , 0.66666669, 1.33333337])
 
     """
+    if d * n == 0:
+        raise ValueError("d or n should not be 0.")
 
     dtype = paddle.framework.get_default_dtype()
     val = 1.0 / (n * d)
@@ -1440,12 +1436,12 @@ def fft_c2c(x, n, axis, norm, forward, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
-    op_type = 'fft_c2c'
 
-    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
+        op_type = 'fft_c2c'
+        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
         inputs = {
             'X': [x],
         }
@@ -1472,12 +1468,13 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         _check_fft_n(n)
         s = [n]
         x = _resize_fft_input(x, s, axes)
-    op_type = 'fft_r2c'
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
-
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
+        op_type = 'fft_r2c'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], op_type
+        )
         inputs = {
             'X': [x],
         }
@@ -1513,8 +1510,6 @@ def fft_c2r(x, n, axis, norm, forward, name):
         _check_fft_n(n)
         s = [n // 2 + 1]
         x = _resize_fft_input(x, s, axes)
-    op_type = 'fft_c2r'
-    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
     if in_dygraph_mode():
         if n is not None:
@@ -1522,6 +1517,8 @@ def fft_c2r(x, n, axis, norm, forward, name):
         else:
             out = _C_ops.fft_c2r(x, axes, norm, forward, 0)
     else:
+        op_type = 'fft_c2r'
+        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
         inputs = {
             'X': [x],
         }
@@ -1572,12 +1569,12 @@ def fftn_c2c(x, s, axes, norm, forward, name):
 
     if s is not None:
         x = _resize_fft_input(x, s, axes)
-    op_type = 'fft_c2c'
-    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
     if in_dygraph_mode():
         out = _C_ops.fft_c2c(x, axes, norm, forward)
     else:
+        op_type = 'fft_c2c'
+        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
         inputs = {
             'X': [x],
         }
@@ -1623,12 +1620,13 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
 
-    op_type = 'fft_r2c'
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
-
     if in_dygraph_mode():
         out = _C_ops.fft_r2c(x, axes, norm, forward, onesided)
     else:
+        op_type = 'fft_r2c'
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], op_type
+        )
         inputs = {
             'X': [x],
         }
@@ -1686,15 +1684,14 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         fft_input_shape[-1] = fft_input_shape[-1] // 2 + 1
         x = _resize_fft_input(x, fft_input_shape, axes)
 
-    op_type = 'fft_c2r'
-    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
-
     if in_dygraph_mode():
         if s is not None:
             out = _C_ops.fft_c2r(x, axes, norm, forward, s[-1])
         else:
             out = _C_ops.fft_c2r(x, axes, norm, forward, 0)
     else:
+        op_type = 'fft_c2r'
+        check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
         inputs = {
             'X': [x],
         }

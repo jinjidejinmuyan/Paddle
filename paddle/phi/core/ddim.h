@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/core/utils/dim.h"
 
 namespace phi {
@@ -29,23 +29,25 @@ namespace phi {
     return (callback);                         \
   }
 
-#define PADDLE_VISIT_DDIM(rank, callback)                                  \
-  switch (rank) {                                                          \
-    PADDLE_VISIT_DDIM_BASE(0, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(1, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(2, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(3, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(4, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(5, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(6, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(7, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(8, callback);                                   \
-    PADDLE_VISIT_DDIM_BASE(9, callback);                                   \
-    default:                                                               \
-      PADDLE_THROW(phi::errors::Unimplemented(                             \
-          "Invalid dimension to be accessed. Now only supports access to " \
-          "dimension 0 to 9, but received dimension is %d.",               \
-          rank));                                                          \
+#define PADDLE_VISIT_DDIM(rank, callback)                                    \
+  switch (rank) {                                                            \
+    PADDLE_VISIT_DDIM_BASE(0, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(1, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(2, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(3, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(4, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(5, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(6, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(7, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(8, callback);                                     \
+    PADDLE_VISIT_DDIM_BASE(9, callback);                                     \
+    default:                                                                 \
+      PD_THROW(                                                              \
+          "Unimplemented error. Invalid dimension to be accessed. Now only " \
+          "supports access to "                                              \
+          "dimension 0 to 9, but received dimension is ",                    \
+          rank,                                                              \
+          ".");                                                              \
   }
 
 template <typename T1, typename T2>
@@ -155,7 +157,7 @@ class DDim {
 
   std::string to_str() const;
 
-  DDim reshape(std::vector<int>& shape) const;
+  DDim reshape(std::vector<int>& shape) const;  // NOLINT
 
   DDim transpose(const std::vector<int>& axis) const;
 
@@ -262,3 +264,10 @@ using DDim = phi::DDim;
 
 }  // namespace framework
 }  // namespace paddle
+
+namespace std {
+template <>
+struct hash<phi::DDim> {
+  std::size_t operator()(phi::DDim const& ddim) const;
+};
+}  // namespace std

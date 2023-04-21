@@ -120,7 +120,7 @@ void ExecuteReshape(const Context& dev_ctx,
                     const DDim& x_dims,
                     DenseTensor* out) {
   auto out_dims = ValidateShape(shape.GetData(), x_dims);
-  auto x_vec_dims = vectorize(x_dims);
+  auto x_vec_dims = x.mem_desc().dims();
 
   funcs::ReorderOneDNNHandler reorder_handler(
       x_vec_dims,
@@ -143,37 +143,38 @@ void ExecuteReshape(const Context& dev_ctx,
   astream.wait();
 
   out->Resize(out_dims);
-  out->set_mem_desc(
-      reorder_dst_memory_p->get_desc().reshape(vectorize(out_dims)));
+  const auto reshape_dims =
+      out_dims.size() != 0 ? vectorize(out_dims) : std::vector<int64_t>{1};
+  out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
+}
+
+template <typename T, typename Context>
+void ReshapeInferKernel(const Context& dev_ctx,
+                        const DenseTensor& x,
+                        const IntArray& shape,
+                        DenseTensor* out) {
+  auto x_dims = x.dims();
+  ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
 
 template <typename T, typename Context>
 void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
-                   DenseTensor* out) {
-  auto x_dims = x.dims();
-  ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
-}
-
-template <typename T, typename Context>
-void ReshapeWithXShape(const Context& dev_ctx,
-                       const DenseTensor& x,
-                       const IntArray& shape,
-                       DenseTensor* out,
-                       DenseTensor* xshape) {
+                   DenseTensor* out,
+                   DenseTensor* xshape) {
   auto x_dims = slice_ddim(xshape->dims(), 1, xshape->dims().size());
   ExecuteReshape<T, Context>(dev_ctx, x, shape, x_dims, out);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    reshape, OneDNN, ONEDNN, phi::ReshapeKernel, float, phi::dtype::bfloat16) {}
-
-PD_REGISTER_KERNEL(reshape_with_xshape,
+PD_REGISTER_KERNEL(reshape_infer,
                    OneDNN,
                    ONEDNN,
-                   phi::ReshapeWithXShape,
+                   phi::ReshapeInferKernel,
                    float,
                    phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(
+    reshape, OneDNN, ONEDNN, phi::ReshapeKernel, float, phi::dtype::bfloat16) {}

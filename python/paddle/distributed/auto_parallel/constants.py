@@ -63,6 +63,8 @@ set_field_default_config(RECOMPUTE, "enable_tuning", False)
 #########################################
 AMP = "amp"
 set_field_default_config(AMP, "enable", False)
+set_field_default_config(AMP, "dtype", "float16")
+set_field_default_config(AMP, "level", "o1")
 set_field_default_config(AMP, "init_loss_scaling", 32768.0)
 set_field_default_config(AMP, "incr_every_n_steps", 1000)
 set_field_default_config(AMP, "decr_every_n_nan_or_inf", 2)
@@ -72,15 +74,7 @@ set_field_default_config(AMP, "use_dynamic_loss_scaling", True)
 set_field_default_config(AMP, "custom_white_list", [])
 set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
-set_field_default_config(AMP, "use_pure_fp16", False)
-set_field_default_config(AMP, "use_fp16_guard", True)
-set_field_default_config(AMP, "use_optimizer_fp16", False)
-
-set_field_default_config(AMP, "enable_bf16", False)
-set_field_default_config(AMP, "custom_bf16_list", [])
-set_field_default_config(AMP, "custom_fp32_list", [])
-set_field_default_config(AMP, "custom_fp32_varnames", [])
-set_field_default_config(AMP, "use_pure_bf16", False)
+set_field_default_config(AMP, "use_fp16_guard", False)
 set_field_default_config(AMP, "use_bf16_guard", False)
 
 #########################################
@@ -90,8 +84,12 @@ SHARDING = "sharding"
 set_field_default_config(SHARDING, "enable", False)
 set_field_default_config(SHARDING, "stage", 1)
 set_field_default_config(SHARDING, "degree", 8)
-set_field_default_config(SHARDING, "overlap_grad_comm", False)
-set_field_default_config(SHARDING, "bucket_size_numel", -1)
+set_field_default_config(SHARDING, "enable_overlap", False)
+set_field_default_config(SHARDING, "param_comm_stream_num", 1)
+set_field_default_config(SHARDING, "grad_comm_stream_num", 1)
+set_field_default_config(SHARDING, "param_bucket_size_numel", 1)
+set_field_default_config(SHARDING, "grad_bucket_size_numel", 1)
+set_field_default_config(SHARDING, "enable_hierarchical_comm", False)
 set_field_default_config(SHARDING, "partition_algor", "greedy_even")
 set_field_default_config(SHARDING, "enable_tuning", False)
 set_field_default_config(SHARDING, "tuning_range", [])
@@ -103,6 +101,16 @@ GRADIENT_MERGE = "gradient_merge"
 set_field_default_config(GRADIENT_MERGE, "enable", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
+
+#########################################
+# pipeline configuration
+#########################################
+PIPELINE = "pipeline"
+set_field_default_config(PIPELINE, "enable", False)
+set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
+set_field_default_config(PIPELINE, "micro_batch_size", 1)
+set_field_default_config(PIPELINE, "accumulate_steps", 1)
+set_field_default_config(PIPELINE, "generation_batch_size", 1)
 
 #########################################
 # quantization configuration
@@ -132,3 +140,10 @@ set_field_default_config(TUNING, "debug", False)
 DATASET = "dataset"
 set_field_default_config(DATASET, "enable", False)
 set_field_default_config(DATASET, "num_shards", 1)
+
+#########################################
+# fused passes configuration
+#########################################
+FUSED_PASSES = "fused_passes"
+set_field_default_config(FUSED_PASSES, "enable", False)
+set_field_default_config(FUSED_PASSES, "fused_passes_list", [])

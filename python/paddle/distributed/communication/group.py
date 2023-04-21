@@ -16,9 +16,7 @@ import warnings
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.layer_helper as layer_helper
+from paddle import framework
 
 
 class Group:
@@ -102,9 +100,7 @@ def _get_global_group():
 
 def _add_new_group(group):
     if group.id in _GroupManager.group_map_by_id:
-        raise RuntimeError(
-            "The group with id {} already exist.".format(group.id)
-        )
+        raise RuntimeError(f"The group with id {group.id} already exist.")
     _GroupManager.group_map_by_id[group.id] = group
 
 
@@ -197,7 +193,7 @@ def destroy_process_group(group=None):
     group = _get_global_group() if group is None else group
     assert (
         group.id in _GroupManager.group_map_by_id
-    ), "Destroy group with id {} is invalid.".format(group.id)
+    ), f"Destroy group with id {group.id} is invalid."
     if _is_global_group(group):
         _GroupManager.group_map_by_id.clear()
     else:
@@ -230,7 +226,7 @@ def get_group(id=0):
 
     if id in _GroupManager.group_map_by_id:
         return _GroupManager.group_map_by_id[id]
-    warnings.warn("Group {} is not initialized.".format(id))
+    warnings.warn(f"Group {id} is not initialized.")
     return None
 
 
@@ -239,7 +235,7 @@ def _sync_calc_stream(tensor):
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
     else:
         op_type = 'c_sync_calc_stream'
-        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper = framework.LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
             inputs={'X': [tensor]},
@@ -254,7 +250,7 @@ def _sync_comm_stream(tensor, ring_id=0):
         )
     else:
         op_type = 'c_sync_comm_stream'
-        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper = framework.LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
             inputs={'X': [tensor]},
@@ -325,7 +321,7 @@ def barrier(group=None):
     if framework.in_dygraph_mode():
         group = _get_global_group() if group is None else group
         place = framework._current_expected_place()
-        if isinstance(place, core.CPUPlace):
+        if isinstance(place, framework.CPUPlace):
             task = group.process_group.barrier()
         else:
             device_id = place.get_device_id()
@@ -344,7 +340,7 @@ def barrier(group=None):
         op_type = 'barrier'
         if not isinstance(ring_id, int):
             raise ValueError("The type of 'group' for barrier must be int.")
-        helper = layer_helper.LayerHelper(op_type, **locals())
+        helper = framework.LayerHelper(op_type, **locals())
         helper.append_op(
             type=op_type,
             inputs={'X': [barrier_tensor]},

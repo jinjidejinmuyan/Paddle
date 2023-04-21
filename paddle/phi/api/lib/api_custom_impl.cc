@@ -91,7 +91,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     phi::AddNInferMeta(x_metas, &meta_out);
 
     using kernel_signature =
-        void (*)(const platform::DeviceContext&,
+        void (*)(const phi::DeviceContext&,
                  const std::vector<const phi::SelectedRows*>&,
                  phi::SelectedRows*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
@@ -119,7 +119,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     phi::AddNInferMeta(x_metas, &meta_out);
 
     using kernel_signature =
-        void (*)(const platform::DeviceContext&,
+        void (*)(const phi::DeviceContext&,
                  const std::vector<const phi::TensorBase*>&,
                  phi::DenseTensor*);
     auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
@@ -136,36 +136,11 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 Tensor copy_to_impl(const Tensor& x, Place place, bool blocking) {
   Tensor out;
   copy(x, place, blocking, &out);
+  out.set_name(x.name());
   return out;
 }
 
 ////////////////// Backward(grad) api impls //////////////////////
-
-void imag_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
-  phi::KernelKey kernel_key{ParseBackend(out_grad),
-                            out_grad.layout(),
-                            phi::dtype::ToComplex(out_grad.dtype())};
-  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "imag_grad", kernel_key);
-  const auto& kernel = kernel_result.kernel;
-
-  VLOG(6) << "imag_grad API kernel key: " << kernel_key;
-  VLOG(6) << "imag_grad API kernel: " << kernel;
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-
-  auto dense_out_grad = TensorToDenseTensor(out_grad);
-
-  auto kernel_out = SetKernelOutput(x_grad);
-  phi::MetaTensor meta_out(kernel_out);
-  phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
-
-  using kernel_signature = void (*)(
-      const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(*dev_ctx, *dense_out_grad, kernel_out);
-}
 
 void embedding_grad_impl(const Tensor& x,
                          const Tensor& weight,
@@ -203,7 +178,7 @@ void embedding_grad_impl(const Tensor& x,
       meta_out.set_dtype(input_weight->dtype());
       kernel_out->set_height(input_weight->dims()[0]);
 
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
@@ -220,7 +195,7 @@ void embedding_grad_impl(const Tensor& x,
       auto* kernel_out = SetKernelOutput(weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
                                         const phi::DenseTensor&,
@@ -255,7 +230,7 @@ void embedding_grad_impl(const Tensor& x,
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::SelectedRows&,
                                         const phi::DenseTensor&,
@@ -273,7 +248,7 @@ void embedding_grad_impl(const Tensor& x,
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->GetCompleteDims());
       meta_out.set_dtype(input_weight->dtype());
-      using kernel_signature = void (*)(const platform::DeviceContext&,
+      using kernel_signature = void (*)(const phi::DeviceContext&,
                                         const phi::DenseTensor&,
                                         const phi::SelectedRows&,
                                         const phi::DenseTensor&,
@@ -288,32 +263,6 @@ void embedding_grad_impl(const Tensor& x,
                    kernel_out);
     }
   }
-}
-
-void real_grad_impl(const Tensor& out_grad, Tensor* x_grad) {
-  phi::KernelKey kernel_key{ParseBackend(out_grad),
-                            out_grad.layout(),
-                            phi::dtype::ToComplex(out_grad.dtype())};
-  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      "real_grad", kernel_key);
-  const auto& kernel = kernel_result.kernel;
-
-  VLOG(6) << "real_grad API kernel key: " << kernel_key;
-  VLOG(6) << "real_grad API kernel: " << kernel;
-
-  auto* dev_ctx = GetDeviceContextByBackend(kernel_key.backend());
-
-  auto dense_out_grad = TensorToDenseTensor(out_grad);
-
-  auto kernel_out = SetKernelOutput(x_grad);
-  phi::MetaTensor meta_out(kernel_out);
-  phi::RealAndImagGradInferMeta(*dense_out_grad, &meta_out);
-
-  using kernel_signature = void (*)(
-      const phi::DeviceContext&, const phi::DenseTensor&, phi::DenseTensor*);
-
-  auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-  (*kernel_fn)(*dev_ctx, *dense_out_grad, kernel_out);
 }
 
 }  // namespace experimental

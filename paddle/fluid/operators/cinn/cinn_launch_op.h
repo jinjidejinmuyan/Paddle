@@ -54,9 +54,13 @@ void LaunchCinnExecution(const CinnCompiledObject& compiled_obj,
 // Set cinn FLAGS (such as FLAGS_cinn_cudnn_deterministic) with paddle's FLAGS.
 void SetCinnRuntimeFlags();
 
+// set CINN global random seed
+template <typename DeviceContext>
+void SetCinnRandomSeed();
+
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnLaunchOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -133,6 +137,9 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
     // Step 3. Set CINN runtime FLAGS, such as FLAGS_cinn_cudnn_deterministic.
     details::SetCinnRuntimeFlags();
 
+    // set CINN global random seed
+    details::SetCinnRandomSeed<DeviceContext>();
+
     // Step 4. Execute the compiled CINN instructions by a PE or
     //         by the CINN compiled program in sequential order
     if (FLAGS_enable_pe_launch_cinn) {
@@ -142,7 +149,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         VLOG(4) << "Execute the runtime program by InterpreterCore";
         auto* interpreter_core = launch_context->InitializeInterpreterCore(
             place, const_cast<framework::Scope*>(&scope));
-        interpreter_core->Run({});
+        interpreter_core->Run({}, false);
       } else {
         platform::RecordEvent record_event_4(
             "Step 4. Execute the runtime graph by PE.");

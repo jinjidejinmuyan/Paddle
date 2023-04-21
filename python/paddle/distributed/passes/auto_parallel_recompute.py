@@ -14,8 +14,8 @@
 
 import logging
 
+import paddle
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid import core, framework, unique_name
 from paddle.fluid.backward import (
     ProgramStats,
     _append_grad_suffix_,
@@ -23,8 +23,10 @@ from paddle.fluid.backward import (
     _get_no_grad_set_name,
     _rename_arg_,
 )
+from paddle.framework import core
+from paddle.utils import unique_name
 
-from ..auto_parallel.dist_attribute import OperatorDistributedAttribute
+from ..auto_parallel.dist_attribute import OperatorDistAttr
 from ..auto_parallel.utils import (
     get_loss_op,
     insert_dependencies_for_two_ops,
@@ -97,7 +99,7 @@ class RecomputeState(ProgramStats):
             segments.append([segment_idx[0], segment_idx[-1] + 1])
             self._checkpoints.extend(self.ops[segment_idx[-1]].output_arg_names)
 
-        for i in reversed(sorted(no_recompute_segments)):
+        for i in sorted(no_recompute_segments, reverse=True):
             assert i < len(
                 segments
             ), "the no_recompute_segments idx [{}] should be lower the number of segment [{}]".format(
@@ -113,7 +115,7 @@ class RecomputeState(ProgramStats):
         a seed op before it to guarantee that two dropout op have the same outputs.
         """
         op_types = [op.type for op in self.ops]
-        if "dropout" not in op_types:
+        if "dropout" not in op_types and "fused_dropout_add" not in op_types:
             return
 
         op_idx = 0
@@ -125,16 +127,23 @@ class RecomputeState(ProgramStats):
                 self._reserved_vars.extend(cur_op.output_arg_names)
                 op_idx += 1
                 continue
-            if cur_op.type != "dropout":
+            if cur_op.type not in ["dropout", "fused_dropout_add"]:
                 op_idx += 1
                 continue
-            if cur_op.input("Seed") is not None and len(cur_op.input("Seed")):
+            seed_tensor_name = (
+                "seed_tensor" if cur_op.type == "fused_dropout_add" else "Seed"
+            )
+            if cur_op.input(seed_tensor_name) is not None and len(
+                cur_op.input(seed_tensor_name)
+            ):
                 op_idx += 1
                 continue
 
             cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(cur_op)
             # insert seed op to guarantee that two dropout op have the same outputs
-            op_unique_name = unique_name.generate("seed")
+            # NOTE Hack for adopt recompute for random control, for more info see dist_dropout.py
+            # new seed added by recompute should have a prefix to distinguish with seed added by user or other moudule.
+            op_unique_name = unique_name.generate("rc_seed")
             var_unique_name = unique_name.generate_with_ignorable_key(
                 ".".join([op_unique_name, 'tmp'])
             )
@@ -175,7 +184,7 @@ class RecomputeState(ProgramStats):
 
             # modify dropout op's desc
             self.ops.insert(op_idx, seed_op)
-            cur_op.desc.set_input("Seed", [var_unique_name])
+            cur_op.desc.set_input(seed_tensor_name, [var_unique_name])
             cur_op._remove_attr("fix_seed")
             cur_op._remove_attr("seed")
             cur_op_dist_attr.set_input_dist_attr(
@@ -221,7 +230,8 @@ def _add_needed_descs_to_block(
 
     result_descs = []
     for desc in descs:
-        if isinstance(desc, framework.Operator):
+        # if isinstance(desc, framework.Operator):
+        if isinstance(desc, paddle.static.Operator):
             desc = desc.desc
         if isinstance(desc, tuple):
             desc = desc[0]
@@ -290,9 +300,7 @@ class RecomputePass(PassBase):
             return
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info(
-                "recompute segment[{}/{}]".format(i + 1, len(segments))
-            )
+            logging.info(f"recompute segment[{i + 1}/{len(segments)}]")
             logging.info(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,
@@ -474,6 +482,7 @@ class RecomputePass(PassBase):
                                 self._dist_context,
                                 is_recompute=True,
                                 sync=False,
+                                op_namescope="recompute_segment_dep",
                             )
         main_program._sync_with_cpp()
 
@@ -494,7 +503,7 @@ class RecomputePass(PassBase):
                 )
 
     def set_op_dist_attr(self, op, old_dist_attr, var_name_dict):
-        new_dist_attr = OperatorDistributedAttribute()
+        new_dist_attr = OperatorDistAttr()
         new_dist_attr.is_recompute = True
         new_dist_attr.impl_idx = old_dist_attr.impl_idx
         new_dist_attr.impl_type = old_dist_attr.impl_type

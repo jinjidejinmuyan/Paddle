@@ -17,7 +17,8 @@ from typing import Set
 
 import numpy as np
 
-import paddle.fluid.core as core
+import paddle
+from paddle.fluid import core
 from paddle.fluid.core import (
     AnalysisConfig,
     PaddleDType,
@@ -42,7 +43,7 @@ def tensor_copy_from_cpu(self, data):
     if isinstance(data, np.ndarray) or (
         isinstance(data, list) and len(data) > 0 and isinstance(data[0], str)
     ):
-        self.copy_from_cpu_bind(data)
+        self._copy_from_cpu_bind(data)
     else:
         raise TypeError(
             "In copy_from_cpu, we only support numpy ndarray and list[str] data type."
@@ -54,10 +55,18 @@ def tensor_share_external_data(self, data):
     Support input type check based on tensor.share_external_data.
     '''
     if isinstance(data, core.LoDTensor):
-        self.share_external_data_bind(data)
+        self._share_external_data_bind(data)
+    elif isinstance(data, paddle.Tensor):
+        self._share_external_data_paddle_tensor_bind(data)
+    elif isinstance(data, paddle.fluid.framework.Variable):
+        raise TypeError(
+            "The interface 'share_external_data' can only be used in dynamic graph mode. "
+            "Maybe you called 'paddle.enable_static()' and you are in static graph mode now. "
+            "Please use 'copy_from_cpu' instead."
+        )
     else:
         raise TypeError(
-            "In share_external_data, we only support LoDTensor data type."
+            "In share_external_data, we only support Tensor and LoDTensor."
         )
 
 
@@ -85,9 +94,14 @@ def convert_to_mixed_precision(
         black_list: Operators that do not convert precision.
     '''
     mixed_model_dirname = os.path.dirname(mixed_model_file)
-    mixed_params_dirname = os.path.dirname(mixed_params_file)
-    if not os.path.exists(mixed_model_dirname):
-        os.makedirs(mixed_model_dirname)
+    # Support mixed_params_file is empty, because some models don't have params, but convert_to_mixed_precision will call
+    # constant_folding_pass, it will generate a new params file to save persistable vars, which is saved in the same
+    # level file directory as the model file by default and ends in pdiparams.
+    mixed_params_dirname = (
+        os.path.dirname(mixed_params_file)
+        if len(mixed_params_file) != 0
+        else mixed_model_dirname
+    )
     if not os.path.exists(mixed_params_dirname):
         os.makedirs(mixed_params_dirname)
     convert_to_mixed_precision_bind(

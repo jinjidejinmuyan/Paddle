@@ -25,18 +25,18 @@
 #include "glog/logging.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -122,7 +122,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
