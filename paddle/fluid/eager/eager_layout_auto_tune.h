@@ -33,14 +33,17 @@ inline bool NeedTransLayout(
   return false;
 }
 
+// Layout 自动调优
 inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::experimental::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector) {
   // For agnostic op like add, relu, exp
   auto first_layout = tensors_vector[0][0].layout();
+  // 从 class LayoutAutoTune 这个全局单例里面拿
   auto desired_layout = DesiredLayout();
   bool is_started = !(desired_layout == phi::DataLayout::UNDEFINED);
+  // tensors_vector 里面有不一致的就要 trans-layout
   if (is_started && NeedTransLayout(tensors_vector, first_layout)) {
     bool need_trans_back = false;
     for (size_t i = 0; i < tensors_vector.size(); i++) {
@@ -50,12 +53,15 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
         }
       }
     }
+    // 转换成 default 或者 desired_layout：只有 NCHW 这种四维的用
+    // desired_layout，其他都用 default
     auto final_layout = need_trans_back ? DefaultLayout() : desired_layout;
     VLOG(4) << op_name << "'s has different layout, need trans to "
             << final_layout;
     return std::make_shared<EagerLayoutTransformer>(
         op_name, tensors_vector, final_layout);
   }
+  // tensors_vector 里面的 layout 都一致，不需要 transform
   return std::make_shared<EagerLayoutTransformer>(
       op_name, tensors_vector, first_layout);
 }
@@ -95,7 +101,8 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
   // Heavily op with (string) data_format, data_layout
   auto transposer = std::make_shared<EagerLayoutTransformer>(
       op_name, tensors_vector, tensors_vector[0][0].layout());
-  if (DesiredLayout() == phi::DataLayout::UNDEFINED) {
+  if (DesiredLayout() ==
+      phi::DataLayout::UNDEFINED) {  // 没有定义 desired-layout 时，先初始化
     // Layout autotune only supports model with convolutional layers
     if (op_name != "conv2d") {
       VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;

@@ -120,6 +120,7 @@ class PADDLE_API CustomOpKernelContext {
   std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
   std::vector<Tensor>* AllMutableOutput();
 
+  // 此处的 any_cast 可能不支持 unsigned？
   template <typename AttrType>
   AttrType AttrAt(size_t idx) const {
     try {
@@ -142,6 +143,7 @@ class PADDLE_API CustomOpKernelContext {
 ////////////////////// Kernel Function (PD_KERNEL) ////////////////////////
 
 // Record Op kernel core function
+// KernelFunc 的输入只有一个 CustomOpKernelContext，里面包含所有的输入和输出
 using KernelFunc = void (*)(CustomOpKernelContext*);
 
 #define PD_SPECIALIZE_ComputeCallHelper(attr_type)                             \
@@ -265,7 +267,9 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
   template <int out_idx, typename T>
   struct ComputeReturnHelper;
 
-  // For compatibility with the original custom op form
+  // std::vector<Tensor> func(...) 的情形，将输出的 outs 塞回到
+  // CustomOpKernelContext 里面 For compatibility with the original custom op
+  // form
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, std::vector<Tensor>> {
     static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
@@ -287,6 +291,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     }
   };
 
+  // void func(..., Tensor*) 场景，直接写入传参的 Tensor 中
   template <int out_idx>
   struct ComputeReturnHelper<out_idx, void> {
     static void Compute(CustomOpKernelContext* ctx, const Args&... args) {
@@ -311,6 +316,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
 
 /////////////// InferShape Function (PD_INFER_SHAPE) ///////////////
 
+// InferShapeFunc 的函数定义与 KernelFunc 不同，传入的参数为三个部分
 // Record Op infershape core function
 using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
     const std::vector<std::vector<int64_t>>& input_shapes,
@@ -440,6 +446,7 @@ struct InferShapeFuncImpl<Return (*)(Args...), impl_fn> {
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<float>);
   PD_SPECIALIZE_InferShapeCallHelper_FOR_ATTR(std::vector<std::string>);
 
+  // Reach TypeTag<T> 这个最终的标识符，运行 impl_fn
   // end: base template
   template <typename T>
   struct InferShapeCallHelper<TypeTag<T>> {
@@ -542,6 +549,7 @@ class PADDLE_API OpMetaInfo {
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
 
   // format: {"<name1>", "<name2>", ...}
+  // {"x", "y@VECTOR"}
   OpMetaInfo& Inputs(std::vector<std::string>&& inputs);
 
   // format: {"<name1>", "<name2>", ...}
@@ -592,6 +600,7 @@ class PADDLE_API OpMetaInfoMap {
 
  private:
   OpMetaInfoMap() = default;
+  // {op_name: <op, op_grad, op_grad_grad>}
   std::unordered_map<std::string, std::vector<OpMetaInfo>> map_;
 
   PD_DISABLE_COPY_AND_ASSIGN(OpMetaInfoMap);
@@ -599,9 +608,11 @@ class PADDLE_API OpMetaInfoMap {
 
 //////////////// Op Meta Info Builder /////////////////
 
+// 构造 OpMetaInfo，宏展开后使用的是 OpMetaInfoBuilder
 class PADDLE_API OpMetaInfoBuilder {
  public:
   explicit OpMetaInfoBuilder(std::string&& name, size_t index);
+  // {"x", "y@VECTOR"}
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
   OpMetaInfoBuilder& Outputs(std::vector<std::string>&& outputs);
   OpMetaInfoBuilder& Attrs(std::vector<std::string>&& attrs);

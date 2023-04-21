@@ -137,6 +137,9 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
     VLOG(3) << "Custom Operator: input name - " << in_name;
     if (detail::IsDuplicableVar(in_name)) {
       // return const std::vector<const phi::DenseTensor*>
+      // 这里的输入等，都是从 ExecutionContext 里面拿的，而非
+      // CustomOpKernelContext 静态图获取到的是 DenseTensor，这里给组装成
+      // Tensor，供 Kernel 调用
       auto vec_x = ctx.MultiInput<phi::DenseTensor>(in_name);
       PADDLE_ENFORCE_NE(vec_x.empty(),
                         true,
@@ -144,6 +147,7 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
                             "Input vector<tensor> (%s) is empty.", in_name));
       std::vector<paddle::experimental::Tensor> custom_vec_in;
       for (size_t i = 0; i < vec_x.size(); ++i) {
+        // 此处有 custom_input 的 bug
         auto* x = vec_x[i];
         PADDLE_ENFORCE_NOT_NULL(
             x,
@@ -270,6 +274,8 @@ static void RunKernelFunc(const framework::ExecutionContext& ctx,
 
   try {
     VLOG(3) << "Custom Operator: Run ComputeFunc.";
+    // 前面部分往 kernel_ctx 里面构造输入、输出。然后此处调用宏展开的函数，从
+    // kernel_ctx 里拿数据
     func(&kernel_ctx);
 
     // sync output tensor data into original output
@@ -358,6 +364,9 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
     } else if (attr_type_str == "std::vector<float>") {
       custom_attrs.emplace_back(
           ctx->Attrs().Get<std::vector<float>>(attr_name));
+      // 此处应该是可以支持的，直接按顺序放进去就可以，没必要区分
+      // input、input_vec 等 如果 paddle::any 不支持
+      // std::vector<std::vector<int64_t>> 的话，可能要做简单的区分
     } else if (attr_type_str == "std::vector<int64_t>") {
       // NOTE(chenweihang): InferShape can't support std::vector<int64_t>
       // attr type, because the input type is std::vector<int64_t>, only
@@ -384,6 +393,8 @@ static void RunInferShapeFunc(framework::InferShapeContext* ctx,
   VLOG(3) << "Custom Operator: InferShape - set output ddim.";
   for (size_t i = 0; i < outputs.size(); ++i) {
     auto out_name = outputs[i];
+    // 【注意】还不支持输出为 Vector<Tensor> 类型，这个 if 分支没有走到
+    // 或者想要支持的是，只能输出一个 Vector<Tensor>
     if (detail::IsDuplicableVar(out_name)) {
       std::vector<DDim> vec_ddim;
       vec_ddim.reserve(output_shapes.size());
@@ -449,6 +460,7 @@ class CustomOpMaker : public OpProtoAndCheckerMaker {
                          const std::vector<std::string>& attrs)
       : inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
 
+  // 解析 inputs、outputs、attrs 来构造 Make 函数
   void Make() override {
     for (auto& in_name : inputs_) {
       if (detail::IsDuplicableVar(in_name)) {
@@ -730,6 +742,7 @@ static void RegisterOperatorKernel(const std::string& name,
 #endif
 }
 
+// 将 op 注册到全局的 map 中
 void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                                   void* dso_handle) {
   /* Op register */
@@ -759,6 +772,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   VLOG(3) << "Custom Operator: forward, op attrs: "
           << string::join_strings(op_attrs, ',');
 
+  // 开始构造静态图的 OP 了
   // Op
   info.creator_ = [](const std::string& op_name,
                      const VariableNameMap& inputs,
@@ -974,6 +988,8 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
       grad_info.infer_shape_ = [grad_op_inputs,
                                 grad_op_outputs,
                                 is_double_grad](InferShapeContext* ctx) {
+        // 此处不会由用户指定，因为不允许设置，会自动计算出来——默认场景
+        // 此处与自定义算子文档不一致
         // 1. if forward input exists, gradient's shape is same with forward
         // input
         // default
@@ -1000,7 +1016,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                       "If a custom grad operator contains only one input and "
                       "only one output, the input shape will be directly set "
                       "to the output shape. Otherwise, Please set the forward "
-                      "input as the grad operator's input or  set the "
+                      "input as the grad operator's input or set the "
                       "InferShapeFn of custom grad operator by "
                       ".SetInferShapeFn(PD_INFER_SHAPE(...))"));
               ctx->ShareDim(grad_op_inputs[0], out_name);

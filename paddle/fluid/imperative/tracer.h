@@ -188,6 +188,8 @@ class Tracer {
 
   void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
 
+  // 开启 AutoTune 自动调优，GPU + TensorCore 可用时才会开启（GPU
+  // 满足一定计算能力）
   bool UseLayoutAutoTune() {
 #if defined(PADDLE_WITH_CUDA)
     if (phi::backends::gpu::TensorCoreAvailable()) {

@@ -193,10 +193,12 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
           (PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW") &&
           (conv_in_type == framework::proto::VarType::FP16);
       if (is_tune_fp32) {
-        LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
+        LayoutAutoTune::Instance().SetDesiredLayout(
+            DataLayout::NCHW);  // fp32 的期望 layout 是 NCHW
         LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NHWC);
       } else if (is_tune_fp16) {
-        LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NHWC);
+        LayoutAutoTune::Instance().SetDesiredLayout(
+            DataLayout::NHWC);  // fp16 的期望 layout 是 NHWC
         LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NCHW);
       } else {
         tracer->DisableLayoutAutoTune();

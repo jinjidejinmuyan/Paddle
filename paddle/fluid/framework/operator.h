@@ -606,6 +606,7 @@ class OpKernel : public OpKernelBase {
 class OperatorWithKernel : public OperatorBase {
  public:
   using OpKernelFunc = std::function<void(const ExecutionContext&)>;
+  // 自定义算子也适配了这里的 OpKernelFunc 格式
   using OpKernelMap =
       std::unordered_map<OpKernelType, OpKernelFunc, OpKernelType::Hash>;
 

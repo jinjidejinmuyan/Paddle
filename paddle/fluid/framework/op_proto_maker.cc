@@ -60,16 +60,22 @@ void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   }
 }
 
+// 调用示例：
+// CustomOpMaker custom_maker(op_inputs, op_outputs, op_attrs);
+// custom_maker(info.proto_, info.checker_);
+// 然后会调用到这个函数，生成 op
 void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                         OpAttrChecker* attr_checker) {
   proto_ = proto;
   op_checker_ = attr_checker;
+  // 此处调用每个 OP 定义时的 Make 函数，将 Input、Attr、Output 等放到 proto
+  // 里面
   Make();
   op_checker_->RecordExplicitCheckerNum();
 
   const AttributeMap* extra_attrs_ptr = nullptr;
   const std::string& op_type = proto->type();
-
+  // 一些 op 的 Extra 属性，放到这里来初始化（OP 规范化内容）
   const auto& extra_attr_map =
       operators::ExtraInfoUtils::Instance().GetExtraAttrsMap(op_type);
   if (!extra_attr_map.empty()) {
@@ -77,6 +83,13 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   }
   op_checker_->InitDefaultAttributeMap(extra_attrs_ptr);
 
+  // 每个 Op
+  // 都有一些必填的属性，【疑问】这些属性作用是什么？何时会修改这些属性？
+  // implicit attribute, we mean the attribute added outside of the Make
+  // method like "op_role", "op_role_var", and they are useless in dynamic
+  // graph mode
+  // See：paddle/fluid/framework/attribute_checker.h，the comment of
+  // `explicit_checker_num_`
   AddAttr<int>(OpRoleAttrName(), "The role of this operator")
       .InEnum(
           {static_cast<int>(OpRole::kForward),
@@ -114,7 +127,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                 "Whether the operator has attributes used by quantization. ")
       .SetDefault(false)
       .AsExtra();
-
+  // 检查 Input、Attr、Output 没有重名的
   Validate();
 }
 

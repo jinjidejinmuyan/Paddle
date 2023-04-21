@@ -56,6 +56,7 @@ class Controller {
     return tracer_->GetAmpLevel();
   }
 
+  // 仅限于 GPU，才会有这个功能，Layout 自动调优
   bool UseLayoutAutoTune() {
     bool use_autotune = false;
 #if defined(PADDLE_WITH_CUDA)

@@ -918,6 +918,8 @@ def parse_op_info(op_name):
                 op_name
             )
         )
+    # 只有前向有 proto？——应该是的，只有前向初始化了这个变量
+    # python 端从 proto 里面拿到 output 名字
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
     in_names = [x.name for x in op_proto.inputs]
@@ -1026,6 +1028,7 @@ def _custom_api_content(op_name):
             else:
                 helper = LayerHelper("{op_name}", **locals())
                 for out_name in out_names:
+                    # 默认数据类型
                     outs[out_name] = helper.create_variable(dtype='float32')
 
                 helper.append_op(type="{op_name}", inputs=ins, outputs=outs, attrs=attrs)
