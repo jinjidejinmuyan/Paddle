@@ -542,7 +542,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       const auto& input = inputs.at(i);
       // Parse op_type first, so that use i + 1
       PyObject* obj = PyTuple_GET_ITEM(args, i + 1);
-      // Emplace Py_None from python, this means optional inputs passed to C++,
+      // Emplace Py_None from python, this means optional  inputs passed to C++,
       // use one un-initialized tensor to indicate both Tensor and
       // vector<Tensor> inputs.
       if (obj == Py_None) {
