@@ -18,6 +18,7 @@
 #include <fstream>
 #include <thread>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/backends/codegen_cuda_host.h"
 #include "paddle/cinn/backends/codegen_cuda_util.h"
@@ -71,6 +72,15 @@ void ParallelCompiler::RunTask() {
     }
     VLOG(4) << "Start run task " << idx
             << " on thread: " << std::this_thread::get_id();
+
+    VLOG(4) << "Start GenerateMapExpr ";
+    tasks_[idx].GenerateMapExpr();
+    if (context_->stage == CompilationStage::GENERATE_MAPEXPR) {
+      VLOG(4) << "Just generate_map_expr, finish task " << idx
+              << " on thread: " << std::this_thread::get_id();
+      return;
+    }
+
     VLOG(4) << "Start lowering on task " << idx;
     tasks_[idx].Lowering();
     if (context_->stage == CompilationStage::LOWERING) {
@@ -109,6 +119,12 @@ void ParallelCompiler::LaunchTask() {
   RunTask();
   // syncthreads.
   for_each(threads.begin(), threads.end(), std::mem_fn(&std::thread::join));
+}
+
+void ParallelCompiler::Task::GenerateMapExpr() {
+  auto& group = context->graph->fusion_groups[group_id];
+  auto& map_expr = cinn::adt::GenerateMapExpr(group);
+  pcompiler->result_.map_exprs[group_id] = std::move(map_expr);
 }
 
 void ParallelCompiler::Task::Lowering() {

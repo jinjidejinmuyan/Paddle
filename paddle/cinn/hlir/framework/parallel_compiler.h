@@ -34,6 +34,8 @@ class ParallelCompiler {
   struct Task {
     Task(int group_id, ParallelCompiler* compiler, CompilationContext* context)
         : group_id(group_id), pcompiler(compiler), context(context) {}
+
+    void GenerateMapExpr();
     void Lowering();
     void CodegenAndJit();
     void BuildInstruction();

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/auto_schedule/tuning.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/hlir/framework/graph.h"
@@ -30,14 +31,20 @@ enum class CompilationStage {
   // obtained: lowered_function, source_code, source_ptx, instruction and
   // runtime_program.
   DEFAULT = 0,
-  // Just do lowering, we can only get lowered_function from compilation result.
+  // Stop after lowering, we can get map_exprs, lowered_function from
+  // compilation result.
   LOWERING = 1,
-  // Stop after codegen and jit, we can get: lowered_function, source_code and
+  // Stop after codegen and jit, we can get: map_exprs, lowered_function,
+  // source_code and
   // source_ptx from compilation result.
   CODEGEN_AND_JIT = 2,
-  // Stop after build instruction, we can get: lowered_function, source_code,
+  // Stop after build instruction, we can get: map_exprs, lowered_function,
+  // source_code,
   // source_ptx and runtime_program from compilation result.
   BUILD_INSTRUCTION = 3,
+  // Just do generate_map_expr, we can only get map_exprs from compilation
+  // result.
+  GENERATE_MAPEXPR = 4
 };
 
 // An enum class used to represent the compilation status.
@@ -107,6 +114,7 @@ struct CompilationResult {
   std::vector<std::string> source_ptxs;
   std::vector<std::unique_ptr<Instruction>> instructions;
   std::unique_ptr<Program> runtime_program;
+  std::vector<cinn::adt::m_expr::MapExpr> map_exprs;
 
   void InitCompilationResult(int group_size);
 };
