@@ -54,6 +54,9 @@ class GraphCompiler final {
 
   std::unique_ptr<Program> Build(const std::string& code = "");
 
+  CompilationResult GenerateMapExpr();
+  CompilationResult GenerateMapExpr(CompilationContext* context);
+
   CompilationResult Lowering();
   CompilationResult Lowering(CompilationContext* context);
 

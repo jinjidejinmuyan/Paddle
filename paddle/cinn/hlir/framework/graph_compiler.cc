@@ -83,6 +83,22 @@ CompilationResult GraphCompiler::Build(CompilationContext* context) {
   return result;
 }
 
+CompilationResult GraphCompiler::GenerateMapExpr() {
+  return GenerateMapExpr(&compilation_context_);
+}
+
+CompilationResult GraphCompiler::GenerateMapExpr(CompilationContext* context) {
+  // Global setting
+  Context::Global().ResetNameId();
+  // Setting compile options
+  VLOG(2) << "Compile With Parallel Compiler! But just GenerateMapExpr!";
+  context->stage = CompilationStage::GENERATE_MAPEXPR;
+  // Compile with parallel compiler
+  parallel_compiler_ = std::make_shared<ParallelCompiler>(context);
+  CompilationResult result = (*parallel_compiler_.get())();
+  return result;
+}
+
 CompilationResult GraphCompiler::Lowering() {
   return Lowering(&compilation_context_);
 }

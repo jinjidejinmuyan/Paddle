@@ -31,20 +31,20 @@ enum class CompilationStage {
   // obtained: lowered_function, source_code, source_ptx, instruction and
   // runtime_program.
   DEFAULT = 0,
+  // Just do generate_map_expr, we can only get map_exprs from compilation
+  // result.
+  GENERATE_MAPEXPR = 1
   // Stop after lowering, we can get map_exprs, lowered_function from
   // compilation result.
-  LOWERING = 1,
+  LOWERING = 2,
   // Stop after codegen and jit, we can get: map_exprs, lowered_function,
   // source_code and
   // source_ptx from compilation result.
-  CODEGEN_AND_JIT = 2,
+  CODEGEN_AND_JIT = 3,
   // Stop after build instruction, we can get: map_exprs, lowered_function,
   // source_code,
   // source_ptx and runtime_program from compilation result.
-  BUILD_INSTRUCTION = 3,
-  // Just do generate_map_expr, we can only get map_exprs from compilation
-  // result.
-  GENERATE_MAPEXPR = 4
+  BUILD_INSTRUCTION = 4,
 };
 
 // An enum class used to represent the compilation status.
@@ -53,14 +53,16 @@ enum class CompilationStatus {
   SUCCESS = 0,
   // An unknown error occurred during compilation.
   UNKNOWN_FAIL = 1,
+  // An error occurred during generate map_expr.
+  GENERATE_MAPEXPR_FAIL = 2
   // An error occurred during lowering.
-  LOWERING_FAIL = 2,
+  LOWERING_FAIL = 3,
   // An error occurred during codegen and jit.
-  CODEGEN_JIT_FAIL = 3,
+  CODEGEN_JIT_FAIL = 4,
   // An error occurred during build instruction.
-  INSTUCTION_FAIL = 4,
+  INSTUCTION_FAIL = 5,
   // An error occurred during build runtime program.
-  PROGRAM_FAIL = 5,
+  PROGRAM_FAIL = 6,
 };
 
 struct CompilationContext {
@@ -109,12 +111,12 @@ struct CompilationContext {
 struct CompilationResult {
   CompilationStatus status;
   std::string message;
+  std::vector<cinn::adt::m_expr::MapExpr> map_exprs;
   std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   std::vector<std::string> source_codes;
   std::vector<std::string> source_ptxs;
   std::vector<std::unique_ptr<Instruction>> instructions;
   std::unique_ptr<Program> runtime_program;
-  std::vector<cinn::adt::m_expr::MapExpr> map_exprs;
 
   void InitCompilationResult(int group_size);
 };

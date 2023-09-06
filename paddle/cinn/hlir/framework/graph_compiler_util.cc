@@ -32,11 +32,11 @@ void CompilationContext::ApplySourceCode(const std::string& code) {
 
 void CompilationResult::InitCompilationResult(int group_size) {
   status = CompilationStatus::SUCCESS;
+  map_exprs.resize(group_size);
   lowered_funcs.resize(group_size);
   source_codes.resize(group_size);
   source_ptxs.resize(group_size);
   instructions.resize(group_size);
-  map_exprs.resize(group_size);
 }
 
 }  // namespace framework
