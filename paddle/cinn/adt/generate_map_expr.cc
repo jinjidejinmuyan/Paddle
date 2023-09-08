@@ -123,8 +123,10 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
 std::shared_ptr<KGroup> GenerateKGroups(
     const cinn::hlir::framework::Graph::Group& group,
     const std::vector<std::shared_ptr<IGroup>>& igroups) {
-  // @Yifan
-  ADT_TODO();  // Trival code
+  const auto& cinn_group_ptr =
+      std::make_shared<cinn::hlir::framework::Graph::Group>(group);
+  const auto& kgroup = std::make_shared<KGroup>(cinn_group_ptr, igroups);
+  return kgroup;
 }
 
 std::pair<ScheduleIterators, equation::GraphView>
