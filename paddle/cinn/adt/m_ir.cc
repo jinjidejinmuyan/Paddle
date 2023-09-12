@@ -24,7 +24,7 @@ template <typename DoEachT>
 void MapIR::VisitEachTensor(const DoEachT& DoEach) const {
   ForEachTensor([&](const auto& tensor, const auto& as_output) {
     DoEach(tensor, as_output);
-    return tBreak{false};
+    return tBreak<bool>{false};
   });
 }
 
@@ -396,7 +396,7 @@ bool MergePrevToNext4LoopFuse(
     if (CouldPrevMergedToNext(iter)) {
       MergePrevToNext(iter);
       --iter;
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else {
       ++iter;
@@ -448,12 +448,12 @@ bool MergeNextOrPrev4LoopFuse(
   for (auto iter = map_irs->begin(); iter != map_irs->end();) {
     if (CouldThisMergedToNext(iter)) {
       MergeThisToNext(iter);
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else if (CouldPrevMergedToThis(iter)) {
       MergePrevToThis(iter);
       --iter;
-      iter = op_cluster->erase(iter);
+      iter = map_irs->erase(iter);
       ++merge_count;
     } else {
       ++iter;
@@ -474,10 +474,10 @@ MapIRList ReorderAndMergeOpCluster4LoopFuse(
       GenerateOpClusters(op_stmts, SdIters4Op, GetSchedulePolicy);
 
   // Reorder and merge
-  while (MergePrevToNext4LoopFuse(&op_cluster, SdIters4Tensor)) {
+  while (MergePrevToNext4LoopFuse(&map_irs, SdIters4Tensor)) {
   }
   // Merge
-  while (MergeNextOrPrev4LoopFuse(&op_cluster, SdIters4Tensor)) {
+  while (MergeNextOrPrev4LoopFuse(&map_irs, SdIters4Tensor)) {
   }
 
   return map_irs;

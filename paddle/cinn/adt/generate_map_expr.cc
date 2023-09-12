@@ -60,7 +60,7 @@ void GenerateOpEquations(const m_expr::OpStmt& op_stmt,
 
 std::shared_ptr<equation::config::NativeOpEquationContext>
 MakeContextAndGenerateEquations(const m_expr::OpStmt& op_stmt) {
-  const auto& [op, inputs, outputs] = op_stmt;
+  const auto& [op, inputs, outputs] = op_stmt.tuple();
   const auto& ctx = std::make_shared<equation::config::NativeOpEquationContext>(
       MakeTensorRanks(inputs.value()), MakeTensorRanks(outputs.value()));
 
@@ -461,9 +461,9 @@ List<m_expr::AnchoredMapStmt> MakeAnchoredMapStmts(
 m_expr::MapExpr GenerateMapExpr(const std::shared_ptr<KGroup>& kgroup) {
   // MapExpr = Kernel;
   // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])
-  return {MakeAnchoredMapStmts(kgroup),
-          MakeOutputTensors(kgroup),
-          MakeOutputTensors(kgroup)};
+  return m_expr::MapExpr{MakeAnchoredMapStmts(kgroup),
+                         MakeOutputTensors(kgroup),
+                         MakeOutputTensors(kgroup)};
 }
 
 }  // namespace

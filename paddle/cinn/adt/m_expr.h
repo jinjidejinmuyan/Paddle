@@ -41,14 +41,14 @@ class GlobalMemoryType final {};
 
 inline std::size_t GetHashValue(const GlobalMemoryType&) {
   static GlobalMemoryType global_memory_type;
-  return &global_memory_type;
+  return reinterpret_cast<std::size_t>(&global_memory_type);
 }
 
 class SharedMemoryType final {};
 
 inline std::size_t GetHashValue(const SharedMemoryType&) {
   static SharedMemoryType shared_memory_type;
-  return &shared_memory_type;
+  return reinterpret_cast<std::size_t>(&shared_memory_type);
 }
 
 // MemoryType = GlobalMemoryType | SharedMemoryType
@@ -63,7 +63,7 @@ class TempStorage final : public Tuple<tVar<Name>, Offset, MemoryType> {
 OVERLOAD_OPERATOR_EQ_NE(TempStorage, TupleEqual);
 inline std::size_t GetHashValue(const TempStorage& temp_storage) {
   const auto& [var_name, offset, memory_type] = temp_storage.tuple();
-  std::size_t hash_value = GetHashValue(var_name.value());
+  std::size_t hash_value = std::hash<std::string>()(var_name.value());
   hash_value = hash_combine(hash_value, offset);
   hash_value = hash_combine(hash_value, GetHashValue(memory_type));
   return hash_value;
@@ -81,7 +81,7 @@ OVERRIDE_TAG_GET_HASH_VALUE(tSSAShadow<Name>);
 
 inline std::size_t GetHashValue(const SSAShadowTensor& shadow_tensor) {
   const auto& [shadow_name, tensor] = shadow_tensor.tuple();
-  return hash_combine(GetHashValue(shadow_name), tensor);
+  return hash_combine(GetHashValue(shadow_name), GetHashValue(tensor));
 }
 
 // Tensor = adapter::Tensor | SSAShadowTensor | TempStorage
@@ -116,7 +116,7 @@ class OpStmt final : public Tuple<Op, tIn<List<Arg>>, tOut<List<Arg>>> {
 };
 
 inline std::size_t GetHashValue(const OpStmt& op_stmt_node) {
-  return &op_stmt_node.tuple();
+  return reinterpret_cast<std::size_t>(&op_stmt_node.tuple());
 }
 
 // MapStmt T = (ScheduleDescriptor, [T])

@@ -139,9 +139,9 @@ struct MatchTrait<equation::Value, List<T>> final {
     }                                                                   \
   };
 
-DEFINE_ADT_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDot, Value, Constant);
-DEFINE_ADT_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDot, Value, Constant);
-DEFINE_ADT_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexDot, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDot, Value, Constant);
+DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(ListGetItem, Value, Constant);
 
 #define DEFINE_ADT_MATCH_TRAIT_EQUATION(name)                   \
   template <typename T>                                         \
