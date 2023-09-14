@@ -256,8 +256,8 @@ LoopIterators GetLeftAlignedSdIterators(
 
   LoopIterators ret{loop_iters->begin(), loop_iters->end()};
   for (int i = ret->size() - 1; i >= 0; --i) {
-    if (Used(equation::IterVar{ret->at(i)}) ||
-        IsSpatial(equation::IterVar{ret->at(i)})) {
+    if (Used(ret->at(i)) ||
+        IsSpatial(ret->at(i))) {
       break;
     } else {
       ret->resize(i);

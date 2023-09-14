@@ -32,7 +32,7 @@ class IndexExprInferContext final {
       : map_(init_map) {}
 
   const Value& GetValue(const Variable& variable) const {
-    return Value{map_.at(variable)};
+    return map_.at(variable);
   }
 
   auto SetValue(const Variable& variable, const Value& value) {
