@@ -147,17 +147,17 @@ class Graph final : public std::enable_shared_from_this<Graph> {
     function >> match {
       [&](const Identity<tOut<Iterator>, tIn<Iterator>>& identity) {
         const auto& [out_iter, in_iter] = identity.tuple();
-        out_variables.emplace(out_iter.value());
-        in_variables.emplace(in_iter.value());
+        out_variables.emplace(Variable{out_iter.value()});
+        in_variables.emplace(Variable{in_iter.value()});
       },
       [&](const Identity<tOut<Index>, tIn<Index>>& identity) {
         const auto& [out_index, in_index] = identity.tuple();
-        out_variables.emplace(out_index.value());
-        in_variables.emplace(in_index.value());
+        out_variables.emplace(Variable{out_index.value()});
+        in_variables.emplace(Variable{in_index.value()});
       },
       [&](const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) {
         const auto& [strides, out_index, in_iterators] = dot.tuple();
-        out_variables.emplace(out_index.value());
+        out_variables.emplace(Variable{out_index.value()});
         in_variables.emplace(in_iterators.value()->begin(),
                              in_iterators.value()->end());
       },
@@ -165,7 +165,7 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         const auto& [strides, out_iterators, in_index] = undot.tuple();
         out_variables.emplace(out_iterators.value()->begin(),
                               out_iterators.value()->end());
-        in_variables.emplace(in_index.value());
+        in_variables.emplace(Variable{in_index.value()});
       },
       [&](const InMsgBox2OutMsgBox<tOut<tOutMsgBox<OpArgIndexes>>,
                                    tIn<tInMsgBox<OpArgIndexes>>>& in_msg_box2out_msg_box) {

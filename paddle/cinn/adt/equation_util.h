@@ -32,7 +32,7 @@ common::TopoWalker<FT> GetDAGTopoWalker(
       std::make_shared<std::unordered_map<VT, std::optional<FT>>>();
   var2solo_producer.emplace_back(start, std::nullopt);
   eg_walker(start, [&](FT function) {
-    eg_walker.VisitOutputVariables(function, [](VT out_variable) {
+    eg_walker.VisitOutputVariables(function, [=](VT out_variable) {
       var2solo_producer.emplace_back(out_variable, function);
     });
   });
@@ -101,8 +101,9 @@ void IdentityConnect(const Index& out, const Index& in, const DoEachT& DoEach) {
 }
 
 void IdentityConnect(const Index& out, const Index& in, Equations* equations) {
-  IdentityConnect(out, in,
-                 [&](const auto& equation) { (*equations)->push_back(equation); });
+  IdentityConnect(out, in, [&](const auto& equation) {
+    (*equations)->push_back(equation);
+  });
 }
 
 template <typename DoEachT>

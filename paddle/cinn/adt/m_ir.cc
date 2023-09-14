@@ -56,7 +56,7 @@ std::unordered_map<m_expr::Tensor, tAsOutput<bool>> MapIr::GetTensor2AsOutput()
   std::unordered_map<m_expr::Tensor, tAsOutput<bool>> ret{};
 
   VisitEachTensor([&](const m_expr::Tensor& tensor, tAsOutput<bool> as_output) {
-    ret[tensor] = ret[tensor].value() || as_output.value();
+    ret[tensor] = tAsOutput<bool>{ret[tensor].value() || as_output.value()};
   });
 
   return ret;
@@ -256,7 +256,8 @@ LoopIterators GetLeftAlignedSdIterators(
 
   LoopIterators ret{loop_iters->begin(), loop_iters->end()};
   for (int i = ret->size() - 1; i >= 0; --i) {
-    if (Used(ret->at(i)) || IsSpatial(ret->at(i))) {
+    if (Used(equation::IterVar{ret->at(i)}) ||
+        IsSpatial(equation::IterVar{ret->at(i)})) {
       break;
     } else {
       ret->resize(i);

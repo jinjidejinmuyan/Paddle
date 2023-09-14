@@ -37,10 +37,14 @@ class NativeOpEquationContext final : public OpEquationContext {
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         equations_{},
-        in_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
-        in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
-        out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
-        out_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())) {
+        in_msg_box_in_indexes_(
+            tInMsgBox<List<Index>>{MakeArgIndexes(in_tensors_ranks.size())}),
+        in_msg_box_out_indexes_(
+            tInMsgBox<List<Index>>{MakeArgIndexes(out_tensors_ranks.size())}),
+        out_msg_box_in_indexes_(
+            tOutMsgBox<List<Index>>{MakeArgIndexes(in_tensors_ranks.size())}),
+        out_msg_box_out_indexes_(
+            tOutMsgBox<List<Index>>{MakeArgIndexes(out_tensors_ranks.size())}) {
     Init(&in_iterator_tuples_, in_tensors_ranks);
     Init(&out_iterator_tuples_, out_tensors_ranks);
     Init(&in_stride_tuples_, in_tensors_ranks);
@@ -250,13 +254,13 @@ class NativeOpEquationContext final : public OpEquationContext {
   }
 
   tOutMsgBox<OpArgIndexes> MakeOutMsgBoxOpArgIndexes() const {
-    return OpArgIndexes{out_msg_box_in_indexes_.value(),
-                        out_msg_box_out_indexes_.value()};
+    return tOutMsgBox<OpArgIndexes>{OpArgIndexes{
+        out_msg_box_in_indexes_.value(), out_msg_box_out_indexes_.value()}};
   }
 
   tInMsgBox<OpArgIndexes> MakeInMsgBoxOpArgIndexes() const {
-    return OpArgIndexes{in_msg_box_in_indexes_.value(),
-                        in_msg_box_out_indexes_.value()};
+    return tInMsgBox<OpArgIndexes>{OpArgIndexes{
+        in_msg_box_in_indexes_.value(), in_msg_box_out_indexes_.value()}};
   }
 
   static std::optional<std::size_t> FindPos(const List<Index>& vector,

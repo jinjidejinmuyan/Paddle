@@ -237,8 +237,9 @@ List<m_expr::Stmt> MakeInnerLayerStmts(const std::shared_ptr<IGroup>& igroup,
                                        const m_ir::MapIr& map_ir) {
   List<m_expr::Stmt> ret;
 
-  VisitEachMapIrOpStmt(
-      map_ir, [&](const auto& op_stmt) { ret->emplace_back(op_stmt); });
+  VisitEachMapIrOpStmt(map_ir, [&](const auto& op_stmt) {
+    ret->emplace_back(m_expr::Stmt{op_stmt});
+  });
 
   return ret;
 }
