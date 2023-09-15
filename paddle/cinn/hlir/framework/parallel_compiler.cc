@@ -124,8 +124,8 @@ void ParallelCompiler::LaunchTask() {
 void ParallelCompiler::Task::GenerateMapExpr() {
   VLOG(4) << "Start GenerateMapExpr of Group " << group_id
           << " at thread: " << std::this_thread::get_id();
-  auto& group = context->graph->fusion_groups[group_id];
-  auto& map_expr = cinn::adt::GenerateMapExpr(group);
+  const auto& group = context->graph->fusion_groups[group_id];
+  const auto& map_expr = cinn::adt::GenerateMapExpr(group);
   pcompiler->result_.map_exprs[group_id] = std::move(map_expr);
 }
 
