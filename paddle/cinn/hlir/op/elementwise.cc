@@ -101,7 +101,7 @@ std::vector<shape_t> InferShapeForElementwise(
 }
 
 void GenerateEquationsForElementWise(
-    cinn::adt::config::NaiveOpEquationContext *ctx) {
+    cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
@@ -325,6 +325,14 @@ std::vector<shape_t> InferShapeForSum(const std::vector<shape_t> &inputs_shape,
   std::vector<shape_t> out_shape{shape};
 
   return out_shape;
+}
+
+void GenerateEquationsForSum(cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  for (std::size_t idx = 0; idx < ctx->GetInTensorsRanks().size(); ++idx) {
+    ctx->Equal(ctx->GetInIndex(idx), ctx->GetOutIndex(0));
+  }
 }
 
 std::vector<Type> InferDtypeForSum(const std::vector<Type> &inputs_type,
@@ -1110,10 +1118,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSum)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSum))
-      // Note: multiple inputs and one output, should equations be build between
-      // inputs And each input should be build a equation with the output?
       .set_attr("generate_equations",
-                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForSum))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForSum))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);

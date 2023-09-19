@@ -79,7 +79,7 @@ std::vector<framework::shape_t> InferShapeForRelu(
   return res;
 }
 
-void GenerateEquationsForRelu(cinn::adt::config::NaiveOpEquationContext *ctx) {
+void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
@@ -1078,8 +1078,7 @@ std::vector<shape_t> InferShapeForBatchNorm(
   return res;
 }
 
-void GenerateEquationsForBatchNorm(
-    cinn::adt::config::NaiveOpEquationContext *ctx) {
+void GenerateEquationsForBatchNorm(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
@@ -1997,8 +1996,7 @@ std::vector<std::vector<int>> InferShapeForSoftmax(
   return res;
 }
 
-void GenerateEquationsForSoftmax(
-    cinn::adt::config::NaiveOpEquationContext *ctx) {
+void GenerateEquationsForSoftmax(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
@@ -2094,7 +2092,7 @@ std::vector<std::vector<int>> InferShapeForDropoutInfer(
 }
 
 void GenerateEquationsForDropoutInfer(
-    cinn::adt::config::NaiveOpEquationContext *ctx) {
+    cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
   ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
