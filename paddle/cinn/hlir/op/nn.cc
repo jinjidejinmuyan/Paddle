@@ -79,10 +79,10 @@ std::vector<framework::shape_t> InferShapeForRelu(
   return res;
 }
 
-void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
+void GenerateEquationsForRelu(cinn::adt::config::NaiveOpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
-  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
+  ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
 }
 
 std::vector<Type> InferDtypeForRelu(const std::vector<Type> &inputs_type,
@@ -1078,6 +1078,13 @@ std::vector<shape_t> InferShapeForBatchNorm(
   return res;
 }
 
+void GenerateEquationsForBatchNorm(
+    cinn::adt::config::NaiveOpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
+}
+
 std::vector<Type> InferDtypeForBatchNorm(const std::vector<Type> &inputs_type,
                                          const framework::AttrMapType &attrs) {
   CHECK_EQ(inputs_type.size(), 5U) << "The BatchNorm Infer input's type size "
@@ -1990,6 +1997,13 @@ std::vector<std::vector<int>> InferShapeForSoftmax(
   return res;
 }
 
+void GenerateEquationsForSoftmax(
+    cinn::adt::config::NaiveOpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
+}
+
 std::vector<Type> InferDtypeForSoftmax(const std::vector<Type> &inputs_type,
                                        const framework::AttrMapType &attrs) {
   CHECK(!inputs_type.empty())
@@ -2077,6 +2091,13 @@ std::vector<std::vector<int>> InferShapeForDropoutInfer(
 
   std::vector<std::vector<int>> res{inputs_shape[0]};
   return res;
+}
+
+void GenerateEquationsForDropoutInfer(
+    cinn::adt::config::NaiveOpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
 }
 
 std::vector<Type> InferDtypeForDropoutInfer(
@@ -2354,6 +2375,8 @@ CINN_REGISTER_HELPER(nn_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForRelu6)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
@@ -2435,6 +2458,8 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForBatchNorm)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForBatchNorm))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForBatchNorm))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBatchNorm))
 #ifndef CINN_WITH_CUDA
@@ -2507,6 +2532,8 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForSoftmax)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForSoftmax))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForSoftmax))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForSoftmax))
 #ifndef CINN_WITH_CUDA
@@ -2525,6 +2552,9 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForDropoutInfer)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForDropoutInfer))
+      .set_attr(
+          "generate_equations",
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForDropoutInfer))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForDropoutInfer))
 #ifndef CINN_WITH_CUDA

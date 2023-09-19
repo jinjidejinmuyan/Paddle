@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "absl/types/optional.h"
+#include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -97,6 +98,13 @@ std::vector<shape_t> InferShapeForElementwise(
   CHECK_EQ(inputs_shape.size(), 1UL);
   std::vector<shape_t> res{inputs_shape[0]};
   return res;
+}
+
+void GenerateEquationsForElementWise(
+    cinn::adt::config::NaiveOpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
 }
 
 std::vector<Type> InferDtypeForElementwise(
@@ -985,6 +993,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)      \
       .set_attr("infershape",                                              \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
+      .set_attr(                                                           \
+          "generate_equations",                                            \
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise)) \
       .set_attr("inferdtype",                                              \
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))  \
       .set_attr("inferlayout",                                             \
@@ -1038,6 +1049,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)         \
       .set_attr("infershape",                                                 \
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))     \
+      .set_attr(                                                              \
+          "generate_equations",                                               \
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))    \
       .set_attr("inferdtype",                                                 \
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwiseBool)) \
       .set_attr("inferlayout",                                                \
@@ -1060,6 +1074,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForScale)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
 #ifndef CINN_WITH_CUDA
@@ -1094,6 +1110,10 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_attr<cinn::hlir::framework::StrategyFunction>(
           "CINNStrategy", cinn::hlir::op::StrategyForSum)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForSum))
+      // Note: multiple inputs and one output, should equations be build between
+      // inputs And each input should be build a equation with the output?
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForSum))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
           "OpPattern", cinn::hlir::framework::OpPatternKind::kElementWise);
@@ -1190,6 +1210,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForCast)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForCast))
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise))
@@ -1217,6 +1239,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
       .set_num_outputs(1)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))
       .set_attr<cinn::hlir::framework::OpPatternKind>(
@@ -1230,6 +1254,8 @@ CINN_REGISTER_HELPER(elementwise_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForLogicalNot)
       .set_attr("infershape",
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementWise))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForLogicalNot))
       .set_attr("inferlayout",
