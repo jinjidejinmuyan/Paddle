@@ -37,11 +37,11 @@ class NaiveOpEquationContext final : public OpEquationContext {
   explicit NaiveOpEquationContext(
       const std::vector<std::uint64_t>& in_tensors_ranks,
       const std::vector<std::uint64_t>& out_tensors_ranks,
-      const hlir::framework::Node* op_node)
+      const hlir::framework::AttrMapType& attr_map_type)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         equations_{},
-        attr_map_type_(op_node->attrs.attr_store),
+        attr_map_type_(attr_map_type),
         in_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
         in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
         out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
