@@ -36,10 +36,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   explicit NaiveOpEquationContext(
       const std::vector<std::uint64_t>& in_tensors_ranks,
-      const std::vector<std::uint64_t>& out_tensors_ranks)
+      const std::vector<std::uint64_t>& out_tensors_ranks,
+      const hlir::framework::Node* op_node)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         equations_{},
+        attr_map_type_(op_node->attrs.attr_store),
         in_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
         in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
         out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
@@ -111,6 +113,10 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   const DimTuple& GetOutDimTuple(std::size_t output_idx) const override {
     return out_dim_tuples_.at(output_idx);
+  }
+
+  const hlir::framework::AttrMapType& GetAttrMapType() const override {
+    return attr_map_type_;
   }
 
   const Equations& equations() const { return equations_; }
@@ -298,6 +304,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
   std::vector<StrideTuple> out_stride_tuples_;
   std::vector<DimTuple> in_dim_tuples_;
   std::vector<DimTuple> out_dim_tuples_;
+
+  hlir::framework::AttrMapType attr_map_type_;
 
   FakeOpPlaceHolder fake_op_placeholder_;
 };

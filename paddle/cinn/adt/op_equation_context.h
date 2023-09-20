@@ -59,6 +59,8 @@ class OpEquationContext {
 
   virtual const DimTuple& GetOutDimTuple(std::size_t output_idx) const = 0;
 
+  virtual const hlir::framework::AttrMapType& GetAttrMapType() const = 0;
+
  protected:
   OpEquationContext() = default;
 };
