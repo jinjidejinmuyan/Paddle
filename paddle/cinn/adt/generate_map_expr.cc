@@ -27,7 +27,7 @@
 
 #include "glog/logging.h"
 
-DECLARE_bool(cinn_enable_map_expr);
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn::adt {
 
@@ -443,7 +443,7 @@ void TryGenerateMapExprFromGraph(
   }
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
-    PrintMapExpr(map_expr);
+    PrintMapExpr(map_expr, fusion_group->group_id);
   }
 }
 
