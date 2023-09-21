@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "glog/logging.h"
 #include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
@@ -75,6 +76,7 @@ std::vector<framework::shape_t> InferShapeForRelu(
     const std::vector<framework::shape_t> &inputs_shape,
     const framework::AttrMapType &attrs) {
   CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
+  VLOG(3) << "_________________________________________ ";
   std::vector<framework::shape_t> res{inputs_shape[0]};
   return res;
 }
@@ -82,6 +84,9 @@ std::vector<framework::shape_t> InferShapeForRelu(
 void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
   CHECK(ctx->GetInTensorsRanks().size() != 0)
       << "The inputs is empty! Please check again.";
+  VLOG(3) << "_________________________________________ ";
+
+  VLOG(3) << "attr_map_type.size(): " << ctx->GetAttrMapType().size();
   ctx->Equal(ctx->GetInIndex(0), ctx->GetOutIndex(0));
 }
 

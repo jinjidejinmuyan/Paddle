@@ -108,8 +108,13 @@ void GenerateOpEquations(const OpStmt& op_stmt,
 std::shared_ptr<config::NaiveOpEquationContext> MakeContextAndGenerateEquations(
     const OpStmt& op_stmt) {
   const auto& [op, inputs, outputs] = op_stmt.tuple();
+  CHECK(op.Has<const hlir::framework::Node*>());
+  const hlir::framework::Node* op_node = op.Get<const hlir::framework::Node*>();
+  const hlir::framework::AttrMapType& attr_map_type = op_node->attrs.attr_store;
   const auto& ctx = std::make_shared<config::NaiveOpEquationContext>(
-      MakeTensorRanks(inputs.value()), MakeTensorRanks(outputs.value()));
+      MakeTensorRanks(inputs.value()),
+      MakeTensorRanks(outputs.value()),
+      attr_map_type);
 
   GenerateOpEquations(op_stmt, ctx.get());
 

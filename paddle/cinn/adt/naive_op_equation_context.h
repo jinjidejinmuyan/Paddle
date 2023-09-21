@@ -36,10 +36,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   explicit NaiveOpEquationContext(
       const std::vector<std::uint64_t>& in_tensors_ranks,
-      const std::vector<std::uint64_t>& out_tensors_ranks)
+      const std::vector<std::uint64_t>& out_tensors_ranks,
+      const hlir::framework::AttrMapType& attr_map_type)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         equations_{},
+        attr_map_type_(attr_map_type),
         in_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
         in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
         out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
@@ -204,7 +206,16 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return Undefined{};
   }
 
+  const utils::Attribute& GetAttr(const std::string& name) const {
+    const hlir::framework::AttrMapType& attr_map_type = GetAttrMapType();
+    return attr_map_type.at(name);
+  }
+
  private:
+  const hlir::framework::AttrMapType& GetAttrMapType() const {
+    return attr_map_type_;
+  }
+
   template <typename value_type, typename ContainerT>
   void Init(ContainerT* vec, const std::vector<std::uint64_t>& tensors_ranks) {
     for (std::size_t i = 0; i < tensors_ranks.size(); ++i) {
@@ -298,6 +309,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
   std::vector<StrideTuple> out_stride_tuples_;
   std::vector<DimTuple> in_dim_tuples_;
   std::vector<DimTuple> out_dim_tuples_;
+
+  hlir::framework::AttrMapType attr_map_type_;
 
   FakeOpPlaceHolder fake_op_placeholder_;
 };
