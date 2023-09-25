@@ -37,7 +37,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
   explicit NaiveOpEquationContext(
       const std::vector<std::uint64_t>& in_tensors_ranks,
       const std::vector<std::uint64_t>& out_tensors_ranks,
-      const hlir::framework::AttrMapType& attr_map_type)
+      const hlir::framework::AttrMapType* attr_map_type)
       : in_tensors_ranks_(in_tensors_ranks),
         out_tensors_ranks_(out_tensors_ranks),
         equations_{},
@@ -288,8 +288,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
   }
 
   const utils::Attribute& GetAttribute(const std::string& name) const {
-    const auto& iter = attr_map_type_.find(name);
-    CHECK(iter != attr_map_type_.end())
+    const auto& iter = attr_map_type_->find(name);
+    CHECK(iter != attr_map_type_->end())
         << "Can't find Attribute with this name";
     return iter->second;
   }
@@ -297,6 +297,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
   std::vector<std::uint64_t> in_tensors_ranks_;
   std::vector<std::uint64_t> out_tensors_ranks_;
   Equations equations_;
+  const hlir::framework::AttrMapType* attr_map_type_;
   tInMsgBox<List<Index>> in_msg_box_in_indexes_;
   tInMsgBox<List<Index>> in_msg_box_out_indexes_;
   tOutMsgBox<List<Index>> out_msg_box_in_indexes_;
@@ -309,8 +310,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
   std::vector<DimTuple> out_dim_tuples_;
 
   FakeOpPlaceHolder fake_op_placeholder_;
-
-  hlir::framework::AttrMapType attr_map_type_;
 };
 
 std::function<std::shared_ptr<config::NaiveOpEquationContext>(const OpStmt&)>
