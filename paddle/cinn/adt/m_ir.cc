@@ -19,6 +19,7 @@
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/m_ir.h"
+#include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/print_map_expr.h"
@@ -164,23 +165,29 @@ std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
 
 }  // namespace
 
-bool LocalEquationsSolvable(const GraphView& graph_view,
-                            const Index& anchor_index,
-                            const FakeOpPlaceHolder& fake_op_placeholder) {
+bool LocalEquationsSolvable(
+    const GraphView& graph_view,
+    const Index& anchor_index,
+    const FakeOpPlaceHolder& fake_op_placeholder,
+    const std::shared_ptr<const EquationFunctionConstantsProvider>&
+        constants_provider) {
   const auto& init_var2value = MakeAnchorIndex2Ok(anchor_index);
-  IndexExprInferContext ctx{init_var2value};
+  IndexExprInferContext ctx{init_var2value, constants_provider};
   bool has_no_conflict_value =
       TrySolveEquations(graph_view, anchor_index, &ctx).value();
   return has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
 }
 
 std::vector<Index> GenerateWriteBroadcastTensorIndexs(
-    config::NaiveOpEquationContext* ctx) {
+    config::NaiveOpEquationContext* ctx,
+    const std::shared_ptr<const EquationFunctionConstantsProvider>&
+        constants_provider) {
   const auto& graph_view = Graph::New(ctx->equations())->GetGraphView();
   std::vector<Index> ret{};
   const auto& fake_op_placeholder = ctx->fake_op_placeholder();
   ctx->VisitEachOutputTensorIndex([&](const auto& out_index) {
-    if (!LocalEquationsSolvable(graph_view, out_index, fake_op_placeholder)) {
+    if (!LocalEquationsSolvable(
+            graph_view, out_index, fake_op_placeholder, constants_provider)) {
       ret.emplace_back(out_index);
     }
   });
@@ -200,10 +207,12 @@ void EraseWriteBroadcastOutMsgBox(
 void EraseWriteBroadcastOutMsgBoxes(
     const List<OpStmt>& op_stmts,
     const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
+      new NaiveEquationFunctionConstantsProvider{op_stmts, EquationCtx4OpStmt}};
   VisitEachOpStmt(op_stmts, [&](const auto& op_stmt) {
     auto* ctx = EquationCtx4OpStmt(op_stmt).get();
     const auto& truncated_output_tensor_idxes =
-        GenerateWriteBroadcastTensorIndexs(ctx);
+        GenerateWriteBroadcastTensorIndexs(ctx, constants_provider);
     EraseWriteBroadcastOutMsgBox(truncated_output_tensor_idxes, ctx);
   });
 }
