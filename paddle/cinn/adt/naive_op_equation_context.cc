@@ -22,7 +22,6 @@
 
 #include "glog/logging.h"
 
-
 namespace cinn::adt::config {
 
 namespace {
@@ -92,7 +91,7 @@ Equation EraseIndexes(
 }  // namespace
 
 void NaiveOpEquationContext::Print() {
-  VLOG(3) << "equations : \n" << ToTxtString(equations(), "\n");
+  VLOG(3) << "equations : \n" << ToTxtString(equations());
 }
 
 void NaiveOpEquationContext::EraseOutMsgBoxIndexes(

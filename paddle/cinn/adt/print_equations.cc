@@ -27,6 +27,16 @@ std::string ToTxtString(const tStride<UniqueId>& constant) {
   return "stride_" + std::to_string(constant_unique_id);
 }
 
+std::string OpImpl(const hlir::framework::Node* op) { return op->op()->name; }
+
+std::string OpImpl(const tReduceInit<const hlir::framework::Node*>& op) {
+  return op.value()->op()->name + "_init";
+}
+
+std::string OpImpl(const tReduceAcc<const hlir::framework::Node*>& op) {
+  return op.value()->op()->name + "_acc";
+}
+
 }  // namespace
 
 std::string ToTxtString(const Iterator& iterator) {
@@ -115,6 +125,40 @@ std::string ToTxtString(const tOutMsgBox<List<Index>>& out_msg_box_indexes) {
   ret += ToTxtString(index_list);
   return ret;
 }
+
+std::string ToTxtString(const std::vector<Index>& indexes) {
+  std::string ret;
+  ret += "vector(";
+  for (std::size_t idx = 0; idx < indexes.size(); ++idx) {
+    if (idx != 0) {
+      ret += ", ";
+    }
+    ret += ToTxtString(indexes.at(idx));
+  }
+
+  ret += ")";
+  return ret;
+}
+
+std::string ToTxtString(const List<OpStmt>& op_stmts,
+                        const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::string ret;
+  std::size_t count = 0;
+  for (const auto& op_stmt : *op_stmts) {
+    if (count++ != 0) {
+      ret += "\n";
+    }
+    const auto& [op, _0, _1] = op_stmt.tuple();
+    ret += std::visit([&](const auto& op_impl) { return OpImpl(op_impl); },
+                      op.variant());
+    ret += ": \n";
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
+    ret += ToTxtString(ctx->equations());
+  }
+
+  return ret;
+}
+
 namespace {
 
 struct ToTxtStringStruct {
@@ -212,25 +256,6 @@ std::string ToTxtString(const Equations& equations,
     ret << ToTxtString(equation);
   }
   return ret.str();
-}
-
-void PrintEquations(const Equations& equations, const std::string& separator) {
-  VLOG(3) << ToTxtString(equations, separator);
-}
-
-void PrintOpStmtsEquations(const List<OpStmt>& op_stmts,
-                           const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-  for (const auto& op_stmt : *op_stmts) {
-    const auto& ctx = EquationCtx4OpStmt(op_stmt);
-    ctx->Print();
-  }
-}
-
-void PrintIndexVector(const std::vector<Index>& indexes) {
-  VLOG(3) << "tensor_indexes.size():" << indexes.size();
-  for (const auto& index : indexes) {
-    VLOG(3) << ToTxtString(index);
-  }
 }
 
 }  // namespace cinn::adt

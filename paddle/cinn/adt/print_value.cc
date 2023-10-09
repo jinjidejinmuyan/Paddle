@@ -44,7 +44,7 @@ struct ToTxtStringStruct {
 
   std::string operator()(const List<Value>& value_list) {
     std::string ret;
-    ret += "List(";
+    ret += "[";
 
     for (std::size_t idx = 0; idx < value_list->size(); ++idx) {
       if (idx != 0) {
@@ -53,70 +53,64 @@ struct ToTxtStringStruct {
       ret += ToTxtString(value_list.Get(idx));
     }
 
-    ret += ")";
+    ret += "]";
     return ret;
   }
 
-  std::string operator()(const IndexDot<Value, Constant>& value) {
+  std::string operator()(const IndexDot<Value, Constant>& index_dot) {
     std::string ret;
-    const auto& [_, constant] = value.tuple();
-    const Value& value_ = value.GetIteratorsValue();
+    const auto& [iters, constant] = index_dot.tuple();
     ret +=
-        "IndexDot(" + ToTxtString(value_) + ", " + ToTxtString(constant) + ")";
+        "IndexDot(" + ToTxtString(iters) + ", " + ToTxtString(constant) + ")";
     return ret;
   }
 
-  std::string operator()(const IndexUnDot<Value, Constant>& value) {
+  std::string operator()(const IndexUnDot<Value, Constant>& index_undot) {
     std::string ret;
-    const auto& [_, constant] = value.tuple();
-    const Value& value_ = value.GetIndexValue();
-    ret += "IndexUndot(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const ConstantAdd<Value>& value) {
-    std::string ret;
-    const auto& [_, constant] = value.tuple();
-    const Value& value_ = value.GetArg0();
-    ret += "ConstantAdd(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const ConstantDiv<Value>& value) {
-    std::string ret;
-    const auto& [_, constant] = value.tuple();
-    const Value& value_ = value.GetArg0();
-    ret += "ConstantDiv(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const ConstantMod<Value>& value) {
-    std::string ret;
-    const auto& [_, constant] = value.tuple();
-    const Value& value_ = value.GetArg0();
-    ret += "ConstantMod(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const ListGetItem<Value, Constant>& value) {
-    std::string ret;
-    const auto& [_, constant] = value.tuple();
-    const Value& value_ = value.GetList();
-    ret += "ListGetItem(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const PtrGetItem<Value>& value) {
-    std::string ret;
-    const auto& [ptr_tag, _] = value.tuple();
-    const Value& value_ = value.GetArg1();
+    const auto& [index, constant] = index_undot.tuple();
     ret +=
-        "PtrGetItem(" + ToTxtString(ptr_tag) + ", " + ToTxtString(value_) + ")";
+        "IndexUndot(" + ToTxtString(index) + ", " + ToTxtString(constant) + ")";
+    return ret;
+  }
+
+  std::string operator()(const ConstantAdd<Value>& constant_add) {
+    std::string ret;
+    const auto& [value, constant] = constant_add.tuple();
+
+    ret += "ConstantAdd(" + ToTxtString(value) + ", " + ToTxtString(constant) +
+           ")";
+    return ret;
+  }
+
+  std::string operator()(const ConstantDiv<Value>& constant_div) {
+    std::string ret;
+    const auto& [value, constant] = constant_div.tuple();
+    ret += "ConstantDiv(" + ToTxtString(value) + ", " + ToTxtString(constant) +
+           ")";
+    return ret;
+  }
+
+  std::string operator()(const ConstantMod<Value>& constant_mod) {
+    std::string ret;
+    const auto& [value, constant] = constant_mod.tuple();
+    ret += "ConstantMod(" + ToTxtString(value) + ", " + ToTxtString(constant) +
+           ")";
+    return ret;
+  }
+
+  std::string operator()(const ListGetItem<Value, Constant>& list_get_item) {
+    std::string ret;
+    const auto& [value, constant] = list_get_item.tuple();
+    ret += "ListGetItem(" + ToTxtString(value) + ", " + ToTxtString(constant) +
+           ")";
+    return ret;
+  }
+
+  std::string operator()(const PtrGetItem<Value>& ptr_get_item) {
+    std::string ret;
+    const auto& [ptr_tag, value] = ptr_get_item.tuple();
+    ret +=
+        "PtrGetItem(" + ToTxtString(ptr_tag) + ", " + ToTxtString(value) + ")";
     return ret;
   }
 };

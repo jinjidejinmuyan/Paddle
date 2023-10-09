@@ -24,15 +24,17 @@ namespace cinn::adt {
 std::string ToTxtString(const Equation& equation);
 
 std::string ToTxtString(const Equations& equations,
-                        const std::string& separator);
+                        const std::string& separator = "\n");
 
 std::string ToTxtString(const Iterator& iterator);
 
 std::string ToTxtString(const Index& index);
 
+std::string ToTxtString(const FakeOpPlaceHolder& op);
+
 std::string ToTxtString(const List<Index>& index_list);
 
-std::string ToTxtString(const FakeOpPlaceHolder& op);
+std::string ToTxtString(const List<Stride>& stride_list);
 
 std::string ToTxtString(const List<Iterator>& iterator_list);
 
@@ -40,11 +42,9 @@ std::string ToTxtString(const tInMsgBox<List<Index>>& in_msg_box_indexes_);
 
 std::string ToTxtString(const tOutMsgBox<List<Index>>& out_msg_box_indexes_);
 
-void PrintEquations(const Equations& equations, const std::string& separator);
+std::string ToTxtString(const std::vector<Index>& indexes);
 
-void PrintOpStmtsEquations(const List<OpStmt>& op_stmts,
-                           const EquationCtx4OpStmtT& EquationCtx4OpStmt);
-
-void PrintIndexVector(const std::vector<Index>& indexes);
+std::string ToTxtString(const List<OpStmt>& op_stmts,
+                        const EquationCtx4OpStmtT& EquationCtx4OpStmt);
 
 }  // namespace cinn::adt
