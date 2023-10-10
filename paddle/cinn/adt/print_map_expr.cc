@@ -114,7 +114,7 @@ void ToTextString(const LoopDescriptor& loop_descriptor,
   *string += DebugString(loop_descriptor);
 }
 
-void ToTextString(const ScheduleDescriptor& schedule_descriptor,
+void ToTextString(const LoopDescriptors& schedule_descriptor,
                   std::size_t indent_size,
                   std::string* string) {
   std::size_t count = 0;

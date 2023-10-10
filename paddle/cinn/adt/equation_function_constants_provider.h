@@ -26,7 +26,8 @@ class EquationFunctionConstantsProvider {
 
   virtual Constant GetStrideSize(const Stride& stride) const = 0;
 
-  virtual bool AddStride(const Stride& stride, std::int64_t stride_value) = 0;
+  virtual bool AddStride(const Stride& stride,
+                         const Constant& stride_value) = 0;
 
  protected:
   EquationFunctionConstantsProvider() = default;

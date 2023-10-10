@@ -179,4 +179,9 @@ List<ScheduleDim> MakeAnchorScheduleDims(
   return ret;
 }
 
+LoopSize GetLoopSize(const ScheduleDim& sched_dim) {
+  return std::visit([&](const auto& impl) { return impl.value(); },
+                    sched_dim.variant());
+}
+
 }  // namespace cinn::adt

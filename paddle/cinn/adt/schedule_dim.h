@@ -27,6 +27,8 @@ DEFINE_ADT_TAG(tReduced);
 DEFINE_ADT_TAG(tInjective);
 DEFINE_ADT_UNION(ScheduleDim, tReduced<LoopSize>, tInjective<LoopSize>);
 
+LoopSize GetLoopSize(const ScheduleDim& sched_dim);
+
 class IGroup;
 
 List<ScheduleDim> MakeAnchorScheduleDims(

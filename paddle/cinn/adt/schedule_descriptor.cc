@@ -28,22 +28,31 @@ const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
   return tensor.Get<adapter::Tensor>().GetShape();
 }
 
-ScheduleDescriptor CreateOptimizedScheduleDescriptor(
-    const List<ScheduleDim>& loop_sizes) {
-  ADT_TODO();
-}
-
 }  // namespace
 
-ScheduleDescriptor MakeOptimizedScheduleDescriptor(
-    const std::shared_ptr<KGroup>& kgroup,
-    const std::shared_ptr<IGroup>& igroup) {
-  const auto& schedule_dim = igroup->anchor_schedule_dims();
-
-  return CreateOptimizedScheduleDescriptor(schedule_dim);
+LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
+                                         const List<LoopType>& loop_types) {
+  const auto& sched_dims = GetOutputDimValues(sched_mesh);
+  CHECK_EQ(sched_dims->size(), loop_types->size());
+  LoopDescriptors ret{};
+  for (std::size_t i = 0; i < sched_dims->size(); ++i) {
+    const auto& sched_dim = sched_dims->at(i);
+    ret->emplace_back(
+        LoopDescriptor{loop_types->at(i), GetLoopSize(sched_dim)});
+  }
+  return ret;
 }
 
-ScheduleDescriptor MakeNaiveScheduleDescriptor(
+LoopDescriptors MakeOptimizedScheduleDescriptor(
+    const std::shared_ptr<KGroup>& kgroup,
+    const std::shared_ptr<IGroup>& igroup) {
+  std::tuple<ScheduleMesh, List<LoopType>> sched_tuple =
+      CreateOptimizedScheduleMesh(igroup->anchor_schedule_dims());
+  return CreateScheduleDescriptor(std::get<0>(sched_tuple),
+                                  std::get<1>(sched_tuple));
+}
+
+LoopDescriptors MakeNaiveScheduleDescriptor(
     const std::shared_ptr<KGroup>& kgroup,
     const std::shared_ptr<IGroup>& igroup) {
   const Tensor& tensor = igroup->anchor_tensor();
@@ -56,7 +65,7 @@ ScheduleDescriptor MakeNaiveScheduleDescriptor(
   return ret;
 }
 
-List<LoopSize> GenerateLoopSizeFromSd(const ScheduleDescriptor& sd) {
+List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd) {
   List<LoopSize> sd_sizes{};
   for (const auto& loop_descriptor : *sd) {
     const auto& [loop_type, loop_size] = loop_descriptor.tuple();
