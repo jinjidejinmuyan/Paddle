@@ -28,6 +28,8 @@ DEFINE_ADT_TAG(tInjective);
 DEFINE_ADT_UNION(ScheduleDim, tReduced<LoopSize>, tInjective<LoopSize>);
 
 LoopSize GetLoopSize(const ScheduleDim& sched_dim);
+List<int> GetReduceAxis(const List<ScheduleDim>& loop_sizes);
+List<int> GetInjectiveAxis(const List<ScheduleDim>& loop_sizes);
 
 class IGroup;
 

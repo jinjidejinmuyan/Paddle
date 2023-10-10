@@ -184,4 +184,34 @@ LoopSize GetLoopSize(const ScheduleDim& sched_dim) {
                     sched_dim.variant());
 }
 
+List<int> GetReduceAxis(const List<ScheduleDim>& loop_sizes) {
+  List<int> reduce_axis{};
+  for (std::size_t i = 0; i < loop_sizes->size(); ++i) {
+    const auto& sched_dim = loop_sizes->at(i);
+    if (sched_dim.Has<tReduced<LoopSize>>()) {
+      reduce_axis->emplace_back(i);
+    } else if (sched_dim.Has<tInjective<LoopSize>>()) {
+      // do nothing
+    } else {
+      LOG(FATAL) << "Dead code";
+    }
+  }
+  return reduce_axis;
+}
+
+List<int> GetInjectiveAxis(const List<ScheduleDim>& loop_sizes) {
+  List<int> injective_axis{};
+  for (std::size_t i = 0; i < loop_sizes->size(); ++i) {
+    const auto& sched_dim = loop_sizes->at(i);
+    if (sched_dim.Has<tReduced<LoopSize>>()) {
+      // do nothing
+    } else if (sched_dim.Has<tInjective<LoopSize>>()) {
+      injective_axis->emplace_back(i);
+    } else {
+      LOG(FATAL) << "Dead code";
+    }
+  }
+  return injective_axis;
+}
+
 }  // namespace cinn::adt
