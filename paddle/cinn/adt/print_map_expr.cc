@@ -157,8 +157,6 @@ void ToTextString(const AnchoredMapStmt& anchored_map_stmt,
                   std::string* string) {
   const auto& [map_stmt, schedule_mesh, anchor_tensor, _0, _1] =
       anchored_map_stmt.tuple();
-  VLOG(3) << "schedule_mesh: ";
-  // VLOG(3) << ToTxtString(schedule_mesh);
   *string +=
       GetIndentString(indent_size * kIndentSpaceSize) + "AnchoredMapStmt(";
   ToTensorTxtString(anchor_tensor.value(), string);
