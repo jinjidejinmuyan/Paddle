@@ -227,7 +227,42 @@ class AllInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
   }
 };
 
-/*
+List<int> ConcatIntLists(const List<int>& lhs, const List<int>& rhs) {
+  List<int> ret{};
+  for (int i : *lhs) {
+    ret->emplace_back(i);
+  }
+  for (int i : *rhs) {
+    ret->emplace_back(i);
+  }
+  return ret;
+}
+
+std::vector<std::int64_t> ConcatIntLists(const std::vector<std::int64_t>& lhs,
+                                         const std::vector<std::int64_t>& rhs) {
+  std::vector<std::int64_t> ret{};
+  for (int i : lhs) {
+    ret.emplace_back(i);
+  }
+  for (int i : rhs) {
+    ret.emplace_back(i);
+  }
+  return ret;
+}
+
+const std::vector<std::optional<std::int64_t>>& ConcatIntListsToOptionalList(
+    const std::vector<std::int64_t>& lhs,
+    const std::vector<std::int64_t>& rhs) {
+  std::vector<std::optional<std::int64_t>> ret{};
+  for (int i : lhs) {
+    ret.emplace_back(i);
+  }
+  for (int i : rhs) {
+    ret.emplace_back(i);
+  }
+  return ret;
+}
+
 class GeneralScheduleMeshPolicy final : public ScheduleMeshPolicy {
  public:
   GeneralScheduleMeshPolicy() = default;
@@ -241,34 +276,39 @@ class GeneralScheduleMeshPolicy final : public ScheduleMeshPolicy {
     return true;
   }
 
-  std::tuple<ScheduleMesh, List<LoopType>> Optimize(const List<ScheduleDim>&
-loop_sizes) const override { List<int> injective_axis{}; List<int>
-reduce_axis{}; for (std::size_t i = 0; i < loop_sizes->size(); ++i) { const
-auto& sched_dim = loop_sizes->at(i); if (sched_dim.Has<tReduced<LoopSize>>()) {
-        reduce_axis->emplace_back(i);
-      } else if (sched_dim.Has<tInjective<LoopSize>>()) {
-        injective_axis->emplace_back(i);
-      } else {
-        LOG(FATAL) << "Dead code";
-      }
+  std::tuple<ScheduleMesh, List<LoopType>> Optimize(
+      const List<ScheduleDim>& loop_sizes) const override {
+    const auto& injective_axes = GetInjectiveAxis(loop_sizes);
+    const auto& reduce_axes = GetReduceAxis(loop_sizes);
+
+    std::vector<std::int64_t> reduce_shape{};
+    for (int reduce_axis : *reduce_axes) {
+      reduce_shape.emplace_back(
+          GetLoopSize(loop_sizes->at(reduce_axis)).Get<std::int64_t>());
     }
 
-
     ScheduleMesh sched_mesh{loop_sizes};
-    sched_mesh = MeshReshape(sched_mesh, {acc});
-    sched_mesh = MeshPaddingRoundUp(sched_mesh, {kThreadSize});
-    sched_mesh = MeshReshape(sched_mesh, {-1, kThreadSize});
+    sched_mesh =
+        MeshTranspose(sched_mesh, ConcatIntLists(injective_axes, reduce_axes));
+    sched_mesh = MeshReshape(sched_mesh, ConcatIntLists({-1}, reduce_shape));
+    sched_mesh = MeshPaddingRoundUp(
+        sched_mesh, ConcatIntListsToOptionalList({kThreadSize}, reduce_shape));
+    sched_mesh = MeshReshape(sched_mesh,
+                             ConcatIntLists({-1, kThreadSize}, reduce_shape));
 
-    return std::make_tuple(sched_mesh, List<LoopType>{S0x{}, S1x{}});
+    List<LoopType> loop_types{S0x{}, S1x{}};
+    for (std::size_t i = 0; i < reduce_axes->size(); ++i) {
+      loop_types->emplace_back(Temporal{});
+    }
+    return std::make_tuple(sched_mesh, loop_types);
   }
 };
-*/
 
 const std::vector<std::unique_ptr<ScheduleMeshPolicy>>&
 GetAllScheduleMeshPolicies() {
   static std::vector<std::unique_ptr<ScheduleMeshPolicy>> policies{};
   policies.emplace_back(std::make_unique<AllInjectiveScheduleMeshPolicy>());
-  // policies.emplace_back(std::make_unique<GeneralScheduleMeshPolicy>());
+  policies.emplace_back(std::make_unique<GeneralScheduleMeshPolicy>());
   return policies;
 }
 
