@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "paddle/cinn/adt/adt.h"
+
 namespace cinn::adt {
 
 class LoopSize;
