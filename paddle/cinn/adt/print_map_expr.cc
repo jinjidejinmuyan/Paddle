@@ -154,8 +154,7 @@ void ToTextStringImpl(const MapStmt<Stmt>& map_stmt,
 void ToTextString(const AnchoredMapStmt& anchored_map_stmt,
                   std::size_t indent_size,
                   std::string* string) {
-  const auto& [map_stmt, schedule_mesh, anchor_tensor, _0, _1] =
-      anchored_map_stmt.tuple();
+  const auto& [map_stmt, _, anchor_tensor, _0, _1] = anchored_map_stmt.tuple();
   *string +=
       GetIndentString(indent_size * kIndentSpaceSize) + "AnchoredMapStmt(";
   ToTensorTxtString(anchor_tensor.value(), string);

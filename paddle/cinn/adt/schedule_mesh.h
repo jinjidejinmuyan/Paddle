@@ -47,6 +47,19 @@ DEFINE_ADT_UNION(ScheduleMesh,
                  ScheduleMeshTranspose<ScheduleMesh>,
                  ScheduleMeshPadding<ScheduleMesh>);
 
+ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
+                         const std::vector<std::int64_t>& shape);
+
+ScheduleMesh MeshTranspose(const ScheduleMesh& sched_mesh,
+                           const List<int>& perm);
+
+ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
+                         const List<LoopSize>& padding_to);
+
+ScheduleMesh MeshPaddingRoundUp(
+    const ScheduleMesh& sched_mesh,
+    const std::vector<std::optional<std::int64_t>>& align_size);
+
 std::size_t GetInputRank(const ScheduleMesh& sched_mesh);
 
 std::size_t GetOutputRank(const ScheduleMesh& sched_mesh);
