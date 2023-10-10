@@ -121,6 +121,7 @@ List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd);
 
 class KGroup;
 class IGroup;
+class ScheduleMesh;
 
 LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
                                          const List<LoopType>& loop_types);
