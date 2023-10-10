@@ -11,12 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#pragma once
 
-#include "paddle/cinn/adt/equation_value.h"
+#pragma once
 
 namespace cinn::adt {
 
+class Value;
+
 std::string ToTxtString(const Value& value);
 
-}
+std::string ToTxtString(const std::optional<Value>& opt_value);
+
+}  // namespace cinn::adt

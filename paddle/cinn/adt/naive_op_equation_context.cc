@@ -18,7 +18,7 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
-#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print.h"
 
 #include "glog/logging.h"
 

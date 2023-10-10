@@ -14,17 +14,25 @@
 
 #pragma once
 
-#include <vector>
-#include "paddle/cinn/adt/equation.h"
-#include "paddle/cinn/adt/m_expr.h"
-#include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/print_constant.h"
+#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print_map_expr.h"
+#include "paddle/cinn/adt/print_schedule_descriptor.h"
+#include "paddle/cinn/adt/print_value.h"
 
 namespace cinn::adt {
 
+// print_constant.h
+std::string ToTxtString(const Constant& constant);
+
+// print_map_expr.h
+std::string ToTxtString(const MapExpr& map_expr, const std::string& group_id);
+
+// print_equations.h
 std::string ToTxtString(const Equation& equation);
 
 std::string ToTxtString(const Equations& equations,
-                        const std::string& separator);
+                        const std::string& separator = "\n");
 
 std::string ToTxtString(const Iterator& iterator);
 
@@ -48,5 +56,13 @@ std::string ToTxtString(const std::vector<Index>& indexes);
 
 std::string ToTxtString(const List<OpStmt>& op_stmts,
                         const EquationCtx4OpStmtT& EquationCtx4OpStmt);
+
+// print_schedule_descriptor.h
+std::string ToTxtString(const LoopDescriptor& loop_descriptor);
+
+// print_value.h
+std::string ToTxtString(const Value& value);
+
+std::string ToTxtString(const std::optional<Value>& opt_value);
 
 }  // namespace cinn::adt

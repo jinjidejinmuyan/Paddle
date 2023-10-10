@@ -17,7 +17,7 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/print_equations.h"
 #include "paddle/cinn/adt/print_map_expr.h"
-#include "paddle/cinn/adt/schedule_descriptor.h"
+#include "paddle/cinn/adt/print_schedule_descriptor.h"
 
 namespace cinn::adt {
 
@@ -102,6 +102,18 @@ std::string ToTxtStringImpl(const OpStmt& op_stmt, std::size_t indent_size) {
   ret += GetIndentString(indent_size * kIndentSpaceSize);
   ret += ToTxtString(op);
   ret += ToTxtString(out_args.value(), in_args.value(), true);
+  return ret;
+}
+
+std::string ToTxtString(const ScheduleDescriptor& schedule_descriptor) {
+  std::string ret;
+  std::size_t count = 0;
+  for (const auto& loop_descriptor : *schedule_descriptor) {
+    if (count++ > 0) {
+      ret += ", ";
+    }
+    ret += ToTxtString(loop_descriptor);
+  }
   return ret;
 }
 

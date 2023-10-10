@@ -14,10 +14,10 @@
 
 #pragma once
 
-#include "paddle/cinn/adt/equation_constant.h"
-
 namespace cinn::adt {
+
+class Constant;
 
 std::string ToTxtString(const Constant& constant);
 
-}
+}  // namespace cinn::adt

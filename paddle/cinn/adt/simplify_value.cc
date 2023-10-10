@@ -19,7 +19,6 @@
 #include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
-#include "paddle/cinn/adt/print_value.h"
 #include "paddle/cinn/adt/simplify_value.h"
 
 namespace cinn::adt {

@@ -16,7 +16,8 @@ gather_srcs(
   simplify_value.cc
   print_equations.cc
   print_constant.cc
-  print_value.cc)
+  print_value.cc
+  print_schedule_descriptor.cc)
 
 cinn_cc_test(equation_value_match_trait_test SRCS
              equation_value_match_trait_test.cc DEPS gtest glog)

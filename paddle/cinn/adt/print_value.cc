@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/print_value.h"
+#include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/print_constant.h"
 #include "paddle/cinn/adt/print_equations.h"
 
@@ -121,4 +122,11 @@ std::string ToTxtString(const Value& value) {
   return std::visit(ToTxtStringStruct{}, value.variant());
 }
 
+std::string ToTxtString(const std::optional<Value>& opt_value) {
+  if (opt_value.has_value()) {
+    return ToTxtString(opt_value.value());
+  } else {
+    return "";
+  }
+}
 }  // namespace cinn::adt
