@@ -37,8 +37,9 @@ LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
   LoopDescriptors ret{};
   for (std::size_t i = 0; i < sched_dims->size(); ++i) {
     const auto& sched_dim = sched_dims->at(i);
-    ret->emplace_back(
-        LoopDescriptor{loop_types->at(i), GetLoopSize(sched_dim)});
+    CHECK(sched_dim.Has<std::int64_t>());
+    ret->emplace_back(LoopDescriptor{loop_types->at(i),
+                                     LoopSize{sched_dim.Get<std::int64_t>()}});
   }
   return ret;
 }

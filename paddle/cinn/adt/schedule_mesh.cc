@@ -62,7 +62,7 @@ std::size_t GetOutputRankImpl(
 std::size_t GetOutputRankImpl(
     const ScheduleMeshTranspose<ScheduleMesh>& sched_transpose) {
   const auto& [sched_mesh, perm] = sched_transpose.tuple();
-  CHECK_EQ(GetRank(sched_mesh), perm.value()->size());
+  CHECK_EQ(GetOutputRank(sched_mesh), perm.value()->size());
   return perm.value()->size();
 }
 
@@ -95,8 +95,7 @@ List<Constant> GetOutputDimValuesImpl(
     const ScheduleMeshReshape<ScheduleMesh>& sched_reshape) {
   const auto& [_, shape] = sched_reshape.tuple();
   List<Constant> ret{};
-  for (const auto& dim : *shape.value()) {
-    const auto& loop_size = GetLoopSize(dim);
+  for (const auto& loop_size : *shape.value()) {
     CHECK(loop_size.Has<std::int64_t>());
     ret->emplace_back(loop_size.Get<std::int64_t>());
   }
@@ -118,8 +117,7 @@ List<Constant> GetOutputDimValuesImpl(
     const ScheduleMeshPadding<ScheduleMesh>& sched_padding) {
   const auto& [_, shape] = sched_padding.tuple();
   List<Constant> ret{};
-  for (const auto& dim : *shape.value()) {
-    const auto& loop_size = GetLoopSize(dim);
+  for (const auto& loop_size : *shape.value()) {
     CHECK(loop_size.Has<std::int64_t>());
     ret->emplace_back(loop_size.Get<std::int64_t>());
   }
@@ -181,16 +179,191 @@ ScheduleMesh GetInputScheduleMesh(const ScheduleMesh& sched_mesh) {
 
 namespace {
 
-ScheduleMesh GenerateTransposeScheduleMesh(const ScheduleMesh& sched_mesh) {
-  const auto& sched_dims = GetOutputDimValues(sched_mesh);
-  const auto& is_reduce
+constexpr int kThreadSize = 1024;
+
+class ScheduleMeshPolicy {
+ public:
+  ScheduleMeshPolicy(const ScheduleMeshPolicy&) = delete;
+  ScheduleMeshPolicy(ScheduleMeshPolicy&&) = delete;
+  virtual ~ScheduleMeshPolicy() = default;
+
+  virtual bool Match(const List<ScheduleDim>& loop_sizes) const = 0;
+
+  virtual std::tuple<ScheduleMesh, List<LoopType>> Optimize(
+      const List<ScheduleDim>& loop_sizes) const = 0;
+
+ protected:
+  ScheduleMeshPolicy() = default;
+};
+
+class AllInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
+ public:
+  AllInjectiveScheduleMeshPolicy() = default;
+
+  bool Match(const List<ScheduleDim>& loop_sizes) const override {
+    for (const auto& sched_dim : *loop_sizes) {
+      if (!sched_dim.Has<tInjective<LoopSize>>()) {
+        return false;
+      }
+      if (!GetLoopSize(sched_dim).Has<std::int64_t>()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  std::tuple<ScheduleMesh, List<LoopType>> Optimize(
+      const List<ScheduleDim>& loop_sizes) const override {
+    ScheduleMesh sched_mesh{loop_sizes};
+    std::int64_t acc = 1;
+    for (const auto& sched_dim : *loop_sizes) {
+      acc *= GetLoopSize(sched_dim).Get<std::int64_t>();
+    }
+    sched_mesh = MeshReshape(sched_mesh, {acc});
+    sched_mesh = MeshPaddingRoundUp(sched_mesh, {kThreadSize});
+    sched_mesh = MeshReshape(sched_mesh, {-1, kThreadSize});
+
+    return std::make_tuple(sched_mesh, List<LoopType>{S0x{}, S1x{}});
+  }
+};
+
+/*
+class GeneralScheduleMeshPolicy final : public ScheduleMeshPolicy {
+ public:
+  GeneralScheduleMeshPolicy() = default;
+
+  bool Match(const List<ScheduleDim>& loop_sizes) const override {
+    for (const auto& sched_dim : *loop_sizes) {
+      if (!GetLoopSize(sched_dim).Has<std::int64_t>()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  std::tuple<ScheduleMesh, List<LoopType>> Optimize(const List<ScheduleDim>&
+loop_sizes) const override { List<int> injective_axis{}; List<int>
+reduce_axis{}; for (std::size_t i = 0; i < loop_sizes->size(); ++i) { const
+auto& sched_dim = loop_sizes->at(i); if (sched_dim.Has<tReduced<LoopSize>>()) {
+        reduce_axis->emplace_back(i);
+      } else if (sched_dim.Has<tInjective<LoopSize>>()) {
+        injective_axis->emplace_back(i);
+      } else {
+        LOG(FATAL) << "Dead code";
+      }
+    }
+
+
+    ScheduleMesh sched_mesh{loop_sizes};
+    sched_mesh = MeshReshape(sched_mesh, {acc});
+    sched_mesh = MeshPaddingRoundUp(sched_mesh, {kThreadSize});
+    sched_mesh = MeshReshape(sched_mesh, {-1, kThreadSize});
+
+    return std::make_tuple(sched_mesh, List<LoopType>{S0x{}, S1x{}});
+  }
+};
+*/
+
+const std::vector<std::unique_ptr<ScheduleMeshPolicy>>&
+GetAllScheduleMeshPolicies() {
+  static std::vector<std::unique_ptr<ScheduleMeshPolicy>> policies{};
+  policies.emplace_back(std::make_unique<AllInjectiveScheduleMeshPolicy>());
+  // policies.emplace_back(std::make_unique<GeneralScheduleMeshPolicy>());
+  return policies;
 }
 
 }  // namespace
 
 std::tuple<ScheduleMesh, List<LoopType>> CreateOptimizedScheduleMesh(
     const List<ScheduleDim>& loop_sizes) {
-  ADT_TODO();
+  for (const auto& policy : GetAllScheduleMeshPolicies()) {
+    if (policy->Match(loop_sizes)) {
+      return policy->Optimize(loop_sizes);
+    }
+  }
+  LOG(FATAL) << "Dead code, no valid schedule mesh policy found";
+}
+
+ScheduleMesh MeshReshape(const ScheduleMesh& sched_mesh,
+                         const std::vector<std::int64_t>& shape) {
+  const auto& origin_shape = GetOutputDimValues(sched_mesh);
+  std::int64_t origin_numel = 1;
+  for (const auto& dim : *origin_shape) {
+    CHECK(dim.Has<std::int64_t>());
+    origin_numel *= dim.Get<std::int64_t>();
+  }
+
+  std::int64_t numel = 1;
+  bool dynamic_shape = false;
+  for (const auto& dim : shape) {
+    if (dim < 0) {
+      CHECK(dim == -1 && !dynamic_shape);
+      dynamic_shape = true;
+    } else {
+      numel *= dim;
+    }
+  }
+
+  CHECK(dynamic_shape || numel == origin_numel);
+  List<LoopSize> reshape_to{};
+  for (const auto& dim : shape) {
+    if (dim < 0) {
+      CHECK_EQ(origin_numel % numel, 0);
+      reshape_to->emplace_back(origin_numel / numel);
+    } else {
+      reshape_to->emplace_back(dim);
+    }
+  }
+  return ScheduleMeshReshape<ScheduleMesh>(sched_mesh, reshape_to);
+}
+
+ScheduleMesh MeshTranspose(const ScheduleMesh& sched_mesh,
+                           const List<int>& perm) {
+  return ScheduleMeshTranspose<ScheduleMesh>{sched_mesh, perm};
+}
+
+ScheduleMesh MeshPadding(const ScheduleMesh& sched_mesh,
+                         const List<LoopSize>& padding_to) {
+  const auto& ret = ScheduleMeshPadding<ScheduleMesh>(sched_mesh, padding_to);
+  const auto& input_dims = GetOutputDimValues(sched_mesh);
+  const auto& output_dims = GetOutputDimValues(ret);
+  CHECK_EQ(input_dims->size(), output_dims->size());
+  for (std::size_t i = 0; i < input_dims->size(); ++i) {
+    if (input_dims->at(i).Has<std::int64_t>() &&
+        output_dims->at(i).Has<std::int64_t>()) {
+      CHECK_LE(input_dims->at(i).Get<std::int64_t>(),
+               output_dims->at(i).Get<std::int64_t>());
+    }
+  }
+  return ret;
+}
+
+ScheduleMesh MeshPaddingRoundUp(
+    const ScheduleMesh& sched_mesh,
+    const std::vector<std::optional<std::int64_t>>& align_sizes) {
+  const auto& shape = GetOutputDimValues(sched_mesh);
+  CHECK_EQ(shape->size(), align_sizes.size());
+  List<LoopSize> padding_to{};
+  bool create_new_sched_mesh = false;
+  for (std::size_t i = 0; i < shape->size(); ++i) {
+    if (!align_sizes.at(i).has_value()) {
+      continue;
+    }
+    std::int64_t align_size = align_sizes.at(i).value();
+    CHECK(shape->at(i).Has<std::int64_t>());
+    std::int64_t dim = shape->at(i).Get<std::int64_t>();
+    std::int64_t padding_size =
+        (dim + align_size - 1) / align_size * align_size;
+
+    if (padding_size != dim) {
+      create_new_sched_mesh = true;
+    }
+    padding_to->emplace_back(padding_size);
+  }
+  if (!create_new_sched_mesh) {
+    return sched_mesh;
+  }
+  return ScheduleMeshPadding<ScheduleMesh>(sched_mesh, padding_to);
 }
 
 }  // namespace cinn::adt
