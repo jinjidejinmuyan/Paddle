@@ -362,9 +362,9 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
 
 void AnchorGroup::PrintEquations() const {
   const auto& ctx = EquationCtx4OpStmt(op_stmt);
-  VLOG(3) << "anchor_index: ";
-  VLOG(3) << ToTxtString(anchor_index);
-  VLOG(3) << "AnchorGroup.equations: ";
+  VLOG(1) << "anchor_index: ";
+  VLOG(1) << ToTxtString(anchor_index);
+  VLOG(1) << "AnchorGroup.equations: ";
   ctx->Print();
 }
 

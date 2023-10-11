@@ -91,7 +91,7 @@ Equation EraseIndexes(
 }  // namespace
 
 void NaiveOpEquationContext::Print() {
-  VLOG(3) << "equations : \n" << ToTxtString(equations());
+  VLOG(1) << "Equations : \n" << ToTxtString(equations());
 }
 
 void NaiveOpEquationContext::EraseOutMsgBoxIndexes(

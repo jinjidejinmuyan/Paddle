@@ -14,6 +14,9 @@
 
 #pragma once
 
+#include <optional>
+#include <string>
+
 namespace cinn::adt {
 
 class Value;

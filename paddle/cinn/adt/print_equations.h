@@ -24,7 +24,7 @@ namespace cinn::adt {
 std::string ToTxtString(const Equation& equation);
 
 std::string ToTxtString(const Equations& equations,
-                        const std::string& separator);
+                        const std::string& separator = "\n");
 
 std::string ToTxtString(const Iterator& iterator);
 

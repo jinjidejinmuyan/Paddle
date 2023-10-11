@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <string>
+
 namespace cinn::adt {
 
 class LoopDescriptor;
