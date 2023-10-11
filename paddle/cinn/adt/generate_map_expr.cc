@@ -427,7 +427,7 @@ void TryGenerateMapExprFromGraph(
   }
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
-    LOG(ERROR) << ToTxtString(map_expr, fusion_group->group_id);
+    VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
   }
 }
 
