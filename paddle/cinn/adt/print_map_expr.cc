@@ -107,7 +107,7 @@ std::string ToTxtStringImpl(const OpStmt& op_stmt, std::size_t indent_size) {
   return ret;
 }
 
-std::string ToTxtString(const ScheduleDescriptor& schedule_descriptor) {
+std::string ToTxtString(const LoopDescriptors& schedule_descriptor) {
   std::string ret;
   std::size_t count = 0;
   for (const auto& loop_descriptor : *schedule_descriptor) {
