@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
+#pragma once
+
+#include <string>
 
 namespace cinn::adt {
 
-Constant IndexExprInferContext::GetDimSize(const Dim& dim) const {
-  return constants_provider_->GetDimSize(dim);
-}
+class ScheduleDim;
+
+std::string ToTxtString(const ScheduleDim& schedule_dim);
 
 }  // namespace cinn::adt

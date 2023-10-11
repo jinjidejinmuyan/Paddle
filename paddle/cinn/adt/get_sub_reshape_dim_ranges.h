@@ -12,13 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
+#pragma once
+
+#include <optional>
+#include <vector>
+
+#include "paddle/cinn/adt/adt.h"
 
 namespace cinn::adt {
 
-Constant IndexExprInferContext::GetDimSize(const Dim& dim) const {
-  return constants_provider_->GetDimSize(dim);
-}
+class Constant;
+
+std::optional<std::tuple<std::vector<std::pair<int, int>>,
+                         std::vector<std::pair<int, int>>>>
+GetSubReshapeDimRanges(const List<Constant>& lhs_dims,
+                       const List<Constant>& rhs_dims);
 
 }  // namespace cinn::adt

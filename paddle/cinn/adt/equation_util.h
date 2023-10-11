@@ -87,9 +87,9 @@ EquationGraphTopoWalker<VT, FT> GetSubgraph(
       VisitNextFunctions, VisitInputVariables, VisitOutputVariables);
 }
 
-inline List<Stride> MakeStrides(std::size_t num_strides) {
-  List<Stride> ret{};
-  for (std::size_t i = 0; i < num_strides; ++i) {
+inline List<Dim> MakeDims(std::size_t num_dims) {
+  List<Dim> ret{};
+  for (std::size_t i = 0; i < num_dims; ++i) {
     ret->emplace_back(UniqueId::New());
   }
   return ret;
@@ -109,6 +109,21 @@ inline void IdentityConnect(const Index& out,
 }
 
 template <typename DoEachT>
+void IdentityConnect(const Iterator& out,
+                     const Iterator& in,
+                     const DoEachT& DoEach) {
+  DoEach(Identity<tOut<Iterator>, tIn<Iterator>>{out, in});
+}
+
+inline void IdentityConnect(const Iterator& out,
+                            const Iterator& in,
+                            Equations* equations) {
+  IdentityConnect(out, in, [&](const auto& equation) {
+    (*equations)->push_back(equation);
+  });
+}
+
+template <typename DoEachT>
 void Equal(const Index& lhs, const Index& rhs, const DoEachT& DoEach) {
   IdentityConnect(lhs, rhs, DoEach);
   IdentityConnect(rhs, lhs, DoEach);
@@ -121,29 +136,43 @@ inline void Equal(const Index& lhs, const Index& rhs, Equations* equations) {
 }
 
 template <typename DoEachT>
+void Equal(const Iterator& lhs, const Iterator& rhs, const DoEachT& DoEach) {
+  IdentityConnect(lhs, rhs, DoEach);
+  IdentityConnect(rhs, lhs, DoEach);
+}
+
+inline void Equal(const Iterator& lhs,
+                  const Iterator& rhs,
+                  Equations* equations) {
+  Equal(lhs, rhs, [&](const auto& equation) {
+    (*equations)->emplace_back(equation);
+  });
+}
+
+template <typename DoEachT>
 void GenerateDotEquation(const List<Iterator>& iterators,
-                         const List<Stride>& strides,
+                         const List<Dim>& dims,
                          const Index& index,
                          const DoEachT& DoEach) {
-  DoEach(Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
-      strides, index, iterators});
-  DoEach(UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
-      strides, iterators, index});
+  DoEach(IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>{
+      dims, index, iterators});
+  DoEach(IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>{
+      dims, iterators, index});
 }
 
 template <typename DoEachT>
 Index MakeDot(const List<Iterator>& iterators,
-              const List<Stride>& strides,
+              const List<Dim>& dims,
               const DoEachT& DoEach) {
   Index ret{UniqueId::New()};
-  GenerateDotEquation(iterators, strides, ret, DoEach);
+  GenerateDotEquation(iterators, dims, ret, DoEach);
   return ret;
 }
 
 inline Index MakeDot(const List<Iterator>& iterators,
-                     const List<Stride>& strides,
+                     const List<Dim>& dims,
                      Equations* equations) {
-  return MakeDot(iterators, strides, [&](const auto& equation) {
+  return MakeDot(iterators, dims, [&](const auto& equation) {
     (*equations)->emplace_back(equation);
   });
 }
@@ -158,17 +187,17 @@ inline List<Iterator> MakeIterators(std::size_t num_iterators) {
 
 template <typename DoEachT>
 List<Iterator> MakeUnDot(const Index& index,
-                         const List<Stride>& strides,
+                         const List<Dim>& dims,
                          const DoEachT& DoEach) {
   List<Iterator> ret{};
-  GenerateDotEquation(ret, strides, index, DoEach);
+  GenerateDotEquation(ret, dims, index, DoEach);
   return ret;
 }
 
 inline List<Iterator> MakeUnDot(const Index& index,
-                                const List<Stride>& strides,
+                                const List<Dim>& dims,
                                 Equations* equations) {
-  return MakeUnDot(index, strides, [&](const auto& equation) {
+  return MakeUnDot(index, dims, [&](const auto& equation) {
     (*equations)->emplace_back(equation);
   });
 }

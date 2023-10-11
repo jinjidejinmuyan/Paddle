@@ -19,6 +19,7 @@
 #include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/kgroup.h"
+#include "paddle/cinn/adt/naive_bidirection_equation_generator.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
 #include "paddle/cinn/adt/print.h"
@@ -185,7 +186,11 @@ void PartitionIGroupOpStmts(const List<OpStmt>& op_stmts,
                             const DoEachT& DoEach) {
   const auto& EquationCtx4OpStmt =
       config::GenerateContext4LocalOpStmt(op_stmts);
-  const auto& igroup_specs = PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
+  auto direction_equation_generator =
+      std::make_shared<NaiveBidirectionEquationGenerator>(op_stmts,
+                                                          EquationCtx4OpStmt);
+  const auto& igroup_specs = PartitionOpStmts(
+      EquationCtx4OpStmt, op_stmts, direction_equation_generator);
   for (const auto& igroup_spec : igroup_specs) {
     DoEach(igroup_spec);
   }
@@ -195,7 +200,11 @@ std::shared_ptr<IGroup> MakeIGroup(const AnchorGroup& igroup_spec) {
   std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
       new NaiveEquationFunctionConstantsProvider{
           igroup_spec.op_stmts, igroup_spec.EquationCtx4OpStmt}};
-  CheckEquationSolvable(igroup_spec, constants_provider);
+  std::shared_ptr<DirectionEquationGenerator> direction_equation_generator{
+      new NaiveBidirectionEquationGenerator{igroup_spec.op_stmts,
+                                            igroup_spec.EquationCtx4OpStmt}};
+  CheckEquationSolvable(
+      igroup_spec, constants_provider, direction_equation_generator);
   return std::make_shared<IGroup>(igroup_spec.op_stmts,
                                   igroup_spec.anchor_index,
                                   igroup_spec.EquationCtx4OpStmt,
@@ -222,23 +231,14 @@ std::shared_ptr<KGroup> GenerateKGroups(
   return std::make_shared<KGroup>(group, igroups);
 }
 
-Equations MakeSdEquations(const std::shared_ptr<IGroup>& igroup,
-                          const ScheduleDescriptor& sd) {
-  config::AnchorSdEquationContext ctx{sd->size(), igroup->anchor_index()};
-  igroup->set_anchor_sd_equation_ctx(ctx, sd);
-
-  return igroup->anchor_sd_equation_ctx().value().equations();
-}
-
 GraphView GenerateSdEquationGraphView(const std::shared_ptr<IGroup>& igroup,
-                                      const ScheduleDescriptor& sd) {
-  Equations equations = MakeSdEquations(igroup, sd);
-  return Graph::New(equations)->GetGraphView();
-}
+                                      const ScheduleMesh& sched_mesh) {
+  config::AnchorSdEquationContext ctx{sched_mesh, igroup->anchor_index()};
+  igroup->set_anchor_sd_equation_ctx(ctx);
 
-GraphView MakeEquationGraphView(const std::shared_ptr<IGroup>& igroup,
-                                const ScheduleDescriptor& sd) {
-  return GenerateSdEquationGraphView(igroup, sd);
+  Equations equations = igroup->anchor_sd_equation_ctx().value().equations();
+
+  return Graph::New(equations)->GetGraphView();
 }
 
 using TensorIndexExpr = Value;
@@ -257,8 +257,10 @@ std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
 }
 
 std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
-    const std::shared_ptr<IGroup>& igroup,
-    const GraphView& sd_equation_graph_view) {
+    const std::shared_ptr<IGroup>& igroup, const ScheduleMesh& sched_mesh) {
+  const auto& sd_equation_graph_view =
+      GenerateSdEquationGraphView(igroup, sched_mesh);
+
   GraphView igroup_view = igroup->GetDefaultGraphView();
   GraphView merged_view = igroup_view.Merge(sd_equation_graph_view);
 
@@ -279,7 +281,7 @@ std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
 }
 
 LoopDescriptor4IterVarT MakeGetterLoopDescriptor4IterVar(
-    const LoopIterators& loop_iters, const ScheduleDescriptor& sd) {
+    const LoopIterators& loop_iters, const LoopDescriptors& sd) {
   CHECK_EQ(loop_iters->size(), sd->size());
   using Cache = std::unordered_map<Iterator, LoopDescriptor>;
   const auto& sd_iter2sd = std::make_shared<Cache>();
@@ -356,7 +358,8 @@ List<Tensor> MakeOutputTensors(const std::shared_ptr<KGroup>& kgroup) {
 AnchoredMapStmt GenerateAnchoredMapStmt(
     const std::shared_ptr<IGroup>& igroup,
     const LoopIterators& loop_iters,
-    const ScheduleDescriptor& sd,
+    const ScheduleMesh& sched_mesh,
+    const LoopDescriptors& sd,
     const TensorIndexExpr4TensorT& TensorIndexExpr4Tensor) {
   const auto& LoopDescriptor4IterVar =
       MakeGetterLoopDescriptor4IterVar(loop_iters, sd);
@@ -366,32 +369,32 @@ AnchoredMapStmt GenerateAnchoredMapStmt(
                                                      LoopDescriptor4IterVar,
                                                      TensorIndexExpr4Tensor);
   return AnchoredMapStmt{MakeMapStmt(map_irs),
+                         sched_mesh,
                          GetAnchorTensor(igroup),
                          TensorIndexExpr4Tensor,
                          LoopDescriptor4IterVar};
 }
 
-AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup,
-                                        const ScheduleDescriptor& sd) {
-  const auto& sd_equation_graph_view = MakeEquationGraphView(igroup, sd);
+AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup) {
+  const auto& [sched_mesh, loop_types] =
+      CreateOptimizedScheduleMesh(igroup->anchor_schedule_dims());
+
+  const auto& sd = CreateScheduleDescriptor(sched_mesh, loop_types);
 
   const auto& TensorIndexExpr4Tensor =
-      MakeGetterTensorIndexExpr(igroup, sd_equation_graph_view);
+      MakeGetterTensorIndexExpr(igroup, sched_mesh);
 
-  CHECK(igroup->anchor_sd_equation_ctx().has_value());
-  const auto& schedule_iters =
-      igroup->anchor_sd_equation_ctx().value().loop_iterators();
+  const auto& schedule_iters = igroup->loop_iterators();
 
   return GenerateAnchoredMapStmt(
-      igroup, schedule_iters, sd, TensorIndexExpr4Tensor);
+      igroup, schedule_iters, sched_mesh, sd, TensorIndexExpr4Tensor);
 }
 
 List<AnchoredMapStmt> MakeAnchoredMapStmts(
     const std::shared_ptr<KGroup>& kgroup) {
   List<AnchoredMapStmt> ret{};
   for (const auto& igroup : kgroup->igroups()) {
-    const auto& sd = kgroup->GetDefaultScheduleDescriptor(igroup);
-    ret->emplace_back(GenerateAnchoredMapStmt(igroup, sd));
+    ret->emplace_back(GenerateAnchoredMapStmt(igroup));
   }
   return ret;
 }

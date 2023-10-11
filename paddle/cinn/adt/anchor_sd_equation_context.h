@@ -16,6 +16,7 @@
 
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/equation_util.h"
+#include "paddle/cinn/adt/schedule_mesh.h"
 
 namespace cinn::adt::config {
 
@@ -28,28 +29,38 @@ class AnchorSdEquationContext final {
   AnchorSdEquationContext& operator=(const AnchorSdEquationContext&) = default;
   AnchorSdEquationContext& operator=(AnchorSdEquationContext&&) = default;
 
-  AnchorSdEquationContext(std::size_t num_strides,
+  AnchorSdEquationContext(const ScheduleMesh& sched_mesh,
                           const AnchorIndex& anchor_index)
-      : strides_(MakeStrides(num_strides)),
-        loop_iterators_(MakeIterators(num_strides)) {
-    GenerateSdEquation(anchor_index);
+      : sd_dims_(MakeDims(GetOutputRank(sched_mesh))),
+        sd_iterators_(MakeIterators(GetOutputRank(sched_mesh))),
+        anchor_dims_(MakeDims(GetInputRank(sched_mesh))) {
+    InitDim2Constant(sched_mesh);
+    GenerateSdEquation(sched_mesh, anchor_index);
   }
 
-  const List<Stride>& strides() const { return strides_; }
+  const List<Dim>& sd_dims() const { return sd_dims_; }
 
-  const List<Iterator>& loop_iterators() const { return loop_iterators_; }
+  const List<Dim>& anchor_dims() const { return anchor_dims_; }
+
+  const List<Iterator>& sd_iterators() const { return sd_iterators_; }
 
   const Equations& equations() const { return equations_; }
 
- private:
-  void GenerateSdEquation(const Index& tensor_index) {
-    const auto& sd_index = MakeDot(loop_iterators_, strides_, &equations_);
-    Equal(sd_index, tensor_index, &equations_);
+  const std::unordered_map<Dim, const Constant>& dim2constant() const {
+    return dim2constant_;
   }
 
-  List<Stride> strides_;
-  List<Iterator> loop_iterators_;
+ private:
+  void InitDim2Constant(const ScheduleMesh& sched_mesh);
+
+  void GenerateSdEquation(const ScheduleMesh& sched_mesh,
+                          const Index& tensor_index);
+
+  List<Dim> sd_dims_;
+  List<Iterator> sd_iterators_;
+  List<Dim> anchor_dims_;
   Equations equations_;
+  std::unordered_map<Dim, const Constant> dim2constant_;
 };
 
 }  // namespace cinn::adt::config

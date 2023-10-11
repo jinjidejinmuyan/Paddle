@@ -56,9 +56,9 @@ bool HasReplicatedValues(const List<Value>& values) {
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot,
+    const IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>& dot,
     IndexExprInferContext* ctx) {
-  const auto& [strides, out_index, in_iters] = dot.tuple();
+  const auto& [dims, out_index, in_iters] = dot.tuple();
   List<Value> in_values;
   for (const auto& iter : *in_iters.value()) {
     in_values->emplace_back(ctx->GetValue(iter));
@@ -66,25 +66,25 @@ std::unordered_map<Variable, Value> InferValuesImpl(
   if (HasReplicatedValues(in_values)) {
     return {{out_index.value(), Undefined{}}};
   }
-  List<Constant> stride_constants{};
-  for (const auto& stride : *strides) {
-    stride_constants->emplace_back(stride);
+  List<Constant> dim_constants{};
+  for (const auto& dim : *dims) {
+    dim_constants->emplace_back(dim);
   }
-  IndexDot<Value, Constant> index_dot{in_values, stride_constants};
+  IndexDotValue<Value, Constant> index_dot{in_values, dim_constants};
   return {{out_index.value(), index_dot}};
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot,
+    const IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>& undot,
     IndexExprInferContext* ctx) {
-  const auto& [strides, out_iters, in_index] = undot.tuple();
+  const auto& [dims, out_iters, in_index] = undot.tuple();
 
-  List<Constant> stride_constants{};
-  for (const auto& stride : *strides) {
-    stride_constants->emplace_back(stride);
+  List<Constant> dim_constants{};
+  for (const auto& dim : *dims) {
+    dim_constants->emplace_back(dim);
   }
-  IndexUnDot<Value, Constant> index_undot{ctx->GetValue(in_index.value()),
-                                          stride_constants};
+  IndexUnDotValue<Value, Constant> index_undot{ctx->GetValue(in_index.value()),
+                                               dim_constants};
 
   std::unordered_map<Variable, Value> ret{};
   for (std::size_t idx = 0; idx < out_iters.value()->size(); ++idx) {
@@ -95,28 +95,28 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
-    const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                             tOut<OpArgIndexes<std::optional<Index>>>,
-                             tIn<OpArgIndexes<Index>>>& in_msg_box2out_msg_box,
+    const InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
+                       tOut<OpArgIndexes<std::optional<Index>>>,
+                       tIn<OpArgIndexes<Index>>>& in_msg2out_msg,
     IndexExprInferContext* ctx) {
-  const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
-      in_msg_box2out_msg_box.tuple();
-  const auto& [out_box_in_indexes, out_box_out_indexes] =
-      out_box_indexes.value().tuple();
-  const auto& [in_box_in_indexes, in_box_out_indexes] =
-      in_box_indexes.value().tuple();
+  const auto& [op_placeholder, out_msg_indexes, in_msg_indexes] =
+      in_msg2out_msg.tuple();
+  const auto& [out_msg_in_indexes, out_msg_out_indexes] =
+      out_msg_indexes.value().tuple();
+  const auto& [in_msg_in_indexes, in_msg_out_indexes] =
+      in_msg_indexes.value().tuple();
   std::unordered_map<Variable, Value> ret{{op_placeholder.value(), Ok{}}};
-  CHECK_EQ(out_box_in_indexes.value()->size(),
-           in_box_in_indexes.value()->size());
-  CHECK_EQ(out_box_out_indexes.value()->size(),
-           in_box_out_indexes.value()->size());
-  for (std::size_t i = 0; i < out_box_in_indexes.value()->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_in_indexes.value()->at(i));
-    CHECK(ret.emplace(out_box_in_indexes.value()->at(i), value).second);
+  CHECK_EQ(out_msg_in_indexes.value()->size(),
+           in_msg_in_indexes.value()->size());
+  CHECK_EQ(out_msg_out_indexes.value()->size(),
+           in_msg_out_indexes.value()->size());
+  for (std::size_t i = 0; i < out_msg_in_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_msg_in_indexes.value()->at(i));
+    CHECK(ret.emplace(out_msg_in_indexes.value()->at(i), value).second);
   }
-  for (std::size_t i = 0; i < out_box_out_indexes.value()->size(); ++i) {
-    const auto& value = ctx->GetValue(in_box_out_indexes.value()->at(i));
-    const auto& out_index = out_box_out_indexes.value()->at(i);
+  for (std::size_t i = 0; i < out_msg_out_indexes.value()->size(); ++i) {
+    const auto& value = ctx->GetValue(in_msg_out_indexes.value()->at(i));
+    const auto& out_index = out_msg_out_indexes.value()->at(i);
     if (out_index.has_value()) {
       CHECK(ret.emplace(out_index.value(), value).second);
     }
@@ -165,7 +165,11 @@ tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
 tValueInferSuccess<bool> MergeInferedValuesIntoCtx(const Function* function,
                                                    IndexExprInferContext* ctx) {
   return MergeInferedValuesIntoCtx(
-      function, ctx, [&](const auto&, const auto&) {
+      function, ctx, [&](const std::optional<Value>& lhs, const Value& rhs) {
+        if (lhs.has_value()) {
+          VLOG(1) << "opt_old_value = " << ToTxtString(lhs.value());
+        }
+        VLOG(1) << "simplified = " << ToTxtString(rhs);
         return tValueInferSuccess<bool>{false};
       });
 }

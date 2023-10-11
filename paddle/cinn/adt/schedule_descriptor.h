@@ -20,8 +20,8 @@ namespace cinn::adt {
 
 class AutoSize final {};
 
-// LoopSize = Int64 | AutoSize
-DEFINE_ADT_UNION(LoopSize, std::int64_t, AutoSize);
+// LoopSize = Int64
+DEFINE_ADT_UNION(LoopSize, std::int64_t);
 
 // S(Spatial): S0 = BlockIdx; S1 = ThreadIdx
 // LoopType = S0x | S0y | S0z | S1x | S1y | S1z | Temporal | Vectorize |
@@ -103,12 +103,25 @@ class LoopDescriptor final : public Tuple<LoopType, LoopSize> {
   }
 };
 
-// ScheduleDescriptor = [LoopDescriptor]
-using ScheduleDescriptor = List<LoopDescriptor>;
+// LoopDescriptors = [LoopDescriptor]
+using LoopDescriptors = List<LoopDescriptor>;
 
 inline bool IsSpatial(const LoopType& loop_type) {
   return std::visit([](const auto& impl) { return impl.IsSpatial(); },
                     loop_type.variant());
 }
+
+List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd);
+
+class KGroup;
+class IGroup;
+class ScheduleMesh;
+
+LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
+                                         const List<LoopType>& loop_types);
+
+LoopDescriptors MakeNaiveScheduleDescriptor(
+    const std::shared_ptr<KGroup>& kgroup,
+    const std::shared_ptr<IGroup>& igroup);
 
 }  // namespace cinn::adt

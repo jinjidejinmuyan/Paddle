@@ -22,6 +22,8 @@
 #include "paddle/cinn/adt/naive_equation_function_constants_provider.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
+#include "paddle/cinn/adt/print.h"
+#include "paddle/cinn/adt/write_broadcast_disabled_bidirection_equation_generator.h"
 
 namespace cinn::adt {
 
@@ -63,13 +65,13 @@ void CollectTensorIndexIteratorsImpl(const List<Value>& tensor_index_expr,
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const IndexDot<Value, Constant>& tensor_index_expr,
+    const IndexDotValue<Value, Constant>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIteratorsValue(), ret);
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const IndexUnDot<Value, Constant>& tensor_index_expr,
+    const IndexUnDotValue<Value, Constant>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetIndexValue(), ret);
 }
@@ -157,67 +159,6 @@ LoopIterators GetTensorLoopIterators(
 
 namespace {
 
-std::unordered_map<Variable, const Value> MakeAnchorIndex2Ok(
-    const Index& anchor_index) {
-  return {{anchor_index, Ok{}}};
-}
-
-}  // namespace
-
-bool LocalEquationsSolvable(
-    const GraphView& graph_view,
-    const Index& anchor_index,
-    const FakeOpPlaceHolder& fake_op_placeholder,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider) {
-  const auto& init_var2value = MakeAnchorIndex2Ok(anchor_index);
-  IndexExprInferContext ctx{init_var2value, constants_provider};
-  bool has_no_conflict_value =
-      TrySolveEquations(graph_view, anchor_index, &ctx).value();
-  return has_no_conflict_value && ctx.HasValue(fake_op_placeholder);
-}
-
-std::vector<Index> GenerateWriteBroadcastTensorIndexs(
-    config::NaiveOpEquationContext* ctx,
-    const std::shared_ptr<const EquationFunctionConstantsProvider>&
-        constants_provider) {
-  const auto& graph_view = Graph::New(ctx->equations())->GetGraphView();
-  std::vector<Index> ret{};
-  const auto& fake_op_placeholder = ctx->fake_op_placeholder();
-  ctx->VisitEachOutputTensorIndex([&](const auto& out_index) {
-    if (!LocalEquationsSolvable(
-            graph_view, out_index, fake_op_placeholder, constants_provider)) {
-      ret.emplace_back(out_index);
-    }
-  });
-  return ret;
-}
-
-using EquationCtx4OpStmtT =
-    std::function<std::shared_ptr<config::NaiveOpEquationContext>(
-        const OpStmt&)>;
-
-void EraseWriteBroadcastOutMsgBox(
-    const std::vector<Index>& truncated_output_tensor_indexes,
-    config::NaiveOpEquationContext* ctx) {
-  ctx->EraseOutMsgBoxIndexes(truncated_output_tensor_indexes);
-}
-
-void EraseWriteBroadcastOutMsgBoxes(
-    const List<OpStmt>& op_stmts,
-    const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-  std::shared_ptr<const EquationFunctionConstantsProvider> constants_provider{
-      new NaiveEquationFunctionConstantsProvider{op_stmts, EquationCtx4OpStmt}};
-  VisitEachOpStmt(op_stmts, [&](const auto& op_stmt) {
-    auto* ctx = EquationCtx4OpStmt(op_stmt).get();
-    const auto& truncated_output_tensor_idxes =
-        GenerateWriteBroadcastTensorIndexs(ctx, constants_provider);
-    EraseWriteBroadcastOutMsgBox(truncated_output_tensor_idxes, ctx);
-  });
-}
-
-namespace {
-
 Tensor GetTensorImpl(const OpStmt& op_stmt, const Undefined& undefined) {
   LOG(FATAL) << "position not found";
 }
@@ -293,9 +234,11 @@ MapIrList GenerateMapIrListForLoopFuse(
         TensorIndexExpr4Tensor) {
   const auto& EquationCtx4OpStmt =
       config::GenerateContext4LocalOpStmt(op_stmts);
-  EraseWriteBroadcastOutMsgBoxes(op_stmts, EquationCtx4OpStmt);
-  const auto& partitioned_anchor_groups =
-      PartitionOpStmts(EquationCtx4OpStmt, op_stmts);
+  auto direction_equation_generator =
+      std::make_shared<WriteBroadcastDisabledBidirectionEquationGenerator>(
+          op_stmts, EquationCtx4OpStmt);
+  const auto& partitioned_anchor_groups = PartitionOpStmts(
+      EquationCtx4OpStmt, op_stmts, direction_equation_generator);
   return ConvertAnchorGroups2MapIrList(partitioned_anchor_groups,
                                        TensorIndexExpr4Tensor,
                                        loop_iters,

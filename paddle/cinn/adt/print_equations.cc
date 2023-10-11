@@ -20,9 +20,9 @@ namespace cinn::adt {
 
 namespace {
 
-std::string ToTxtString(const tStride<UniqueId>& constant) {
+std::string ToTxtString(const tDim<UniqueId>& constant) {
   std::size_t constant_unique_id = constant.value().unique_id();
-  return "stride_" + std::to_string(constant_unique_id);
+  return "dim_" + std::to_string(constant_unique_id);
 }
 
 std::string OpImpl(const hlir::framework::Node* op) { return op->op()->name; }
@@ -97,30 +97,30 @@ std::string ToTxtString(const List<Iterator>& iterators) {
   return ret;
 }
 
-std::string ToTxtString(const List<Stride>& strides) {
+std::string ToTxtString(const List<Dim>& dim_list) {
   std::string ret;
   ret += "[";
-  for (std::size_t idx = 0; idx < strides->size(); ++idx) {
+  for (std::size_t idx = 0; idx < dim_list->size(); ++idx) {
     if (idx != 0) {
       ret += ", ";
     }
-    ret += ToTxtString(strides.Get(idx));
+    ret += ToTxtString(dim_list.Get(idx));
   }
   ret += "]";
   return ret;
 }
 
-std::string ToTxtString(const tInMsgBox<List<Index>>& in_msg_box_indexes) {
+std::string ToTxtString(const tInMsg<List<Index>>& in_msg_indexes) {
   std::string ret;
-  const List<Index>& indexes = in_msg_box_indexes.value();
-  ret += ToTxtString(indexes);
+  const List<Index>& index_list = in_msg_indexes.value();
+  ret += ToTxtString(index_list);
   return ret;
 }
 
-std::string ToTxtString(const tOutMsgBox<List<Index>>& out_msg_box_indexes) {
+std::string ToTxtString(const tOutMsg<List<Index>>& out_msg_indexes) {
   std::string ret;
-  const List<Index>& indexes = out_msg_box_indexes.value();
-  ret += ToTxtString(indexes);
+  const List<Index>& index_list = out_msg_indexes.value();
+  ret += ToTxtString(index_list);
   return ret;
 }
 
@@ -177,39 +177,44 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
-      const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) const {
+      const IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>& dot) const {
     std::string ret;
-    const auto& [strides, out_index, in_iterators] = dot.tuple();
-    ret += ToTxtString(out_index.value()) + " = Dot(" +
-           ToTxtString(in_iterators.value()) + ")";
+    const auto& [dim_list, out_index_tag, in_iterator_list_tag] = dot.tuple();
+    const Index& out_index = out_index_tag.value();
+    const List<Iterator>& in_iterator_list = in_iterator_list_tag.value();
+    ret += ToTxtString(out_index) + " = IndexDot(" +
+           ToTxtString(in_iterator_list) + ")";
     return ret;
   }
 
   std::string operator()(
-      const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot)
+      const IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>& undot)
       const {
     std::string ret;
-    const auto& [strides, out_iterators, in_index] = undot.tuple();
-    ret += ToTxtString(out_iterators.value()) + " = UnDot(" +
-           ToTxtString(in_index.value()) + ")";
+    const auto& [dim_list, out_iterator_list_tag, in_index_tag] = undot.tuple();
+    const List<Iterator>& out_iterator_list = out_iterator_list_tag.value();
+    const Index& in_index = in_index_tag.value();
+    ret += ToTxtString(out_iterator_list) + " = IndexUnDot(" +
+           ToTxtString(in_index) + ")";
     return ret;
   }
 
   std::string operator()(
-      const InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                               tOut<OpArgIndexes<std::optional<Index>>>,
-                               tIn<OpArgIndexes<Index>>>& box) const {
+      const InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
+                         tOut<OpArgIndexes<std::optional<Index>>>,
+                         tIn<OpArgIndexes<Index>>>& in_msg2out_msg) const {
     std::string ret;
-    const auto& [out_op, out_indexs, in_indexs] = box.tuple();
+    const auto& [out_op, out_indexs, in_indexs] = in_msg2out_msg.tuple();
     const FakeOpPlaceHolder& op = out_op.value();
-    const auto& [out_indexs_inbox, out_indexs_outbox] =
-        out_indexs.value().tuple();
-    const auto& [in_indexs_inbox, in_indexs_outbox] = in_indexs.value().tuple();
+    const auto& out_index_tuple = out_indexs.value();
+    const auto& in_index_tuple = in_indexs.value();
+    const auto& [out_msg_list_in, out_msg_list_out] = out_index_tuple.tuple();
+    const auto& [in_msg_list_in, in_msg_list_out] = in_index_tuple.tuple();
     ret += ToTxtString(op) + ", ";
-    ret += "(" + ToTxtString(out_indexs_inbox.value()) + ", " +
-           ToTxtString(out_indexs_outbox.value()) + ") = InMsgBox2OutMsgBox(";
-    ret += ToTxtString(in_indexs_inbox.value()) + ", " +
-           ToTxtString(in_indexs_outbox.value()) + ")";
+    ret += "(" + ToTxtString(out_msg_list_in.value()) + ", " +
+           ToTxtString(out_msg_list_out.value()) + ") = InMsg2OutMsg(";
+    ret += ToTxtString(in_msg_list_in.value()) + ", " +
+           ToTxtString(in_msg_list_out.value()) + ")";
     return ret;
   }
 

@@ -18,6 +18,8 @@
 #include "paddle/cinn/adt/print_equations.h"
 #include "paddle/cinn/adt/print_map_expr.h"
 #include "paddle/cinn/adt/print_schedule_descriptor.h"
+#include "paddle/cinn/adt/print_schedule_mesh.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn::adt {
 
@@ -145,7 +147,8 @@ std::string ToTxtStringImpl(const MapStmt<Stmt>& map_stmt,
 std::string ToTxtString(const AnchoredMapStmt& anchored_map_stmt,
                         std::size_t indent_size) {
   std::string ret;
-  const auto& [map_stmt, anchor_tensor, _0, _1] = anchored_map_stmt.tuple();
+  const auto& [map_stmt, schedule_mesh, anchor_tensor, _0, _1] =
+      anchored_map_stmt.tuple();
   ret += GetIndentString(indent_size * kIndentSpaceSize) + "AnchoredMapStmt(";
   ret += ToTxtString(anchor_tensor.value());
   ret += ") {\n";

@@ -12,13 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
+#pragma once
+
+#include <optional>
+
+#include "paddle/cinn/adt/equation_function.h"
 
 namespace cinn::adt {
 
-Constant IndexExprInferContext::GetDimSize(const Dim& dim) const {
-  return constants_provider_->GetDimSize(dim);
-}
+class OpStmt;
+
+class DirectionEquationGenerator {
+ public:
+  DirectionEquationGenerator(const DirectionEquationGenerator&) = delete;
+  DirectionEquationGenerator(DirectionEquationGenerator&&) = delete;
+  ~DirectionEquationGenerator() = default;
+
+  virtual Equations GetDirectionEquations() const = 0;
+
+  virtual std::function<const OpStmt*(const FakeOpPlaceHolder&)>
+  MakeGetterOpStmt4OpPlaceHolder() const = 0;
+
+  virtual std::optional<Index> OutMsgIndex4InMsgIndex(
+      const Index& index) const = 0;
+
+ protected:
+  DirectionEquationGenerator() = default;
+};
 
 }  // namespace cinn::adt

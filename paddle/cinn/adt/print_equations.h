@@ -36,13 +36,13 @@ std::string ToTxtString(const List<Index>& indexes);
 
 std::string ToTxtString(const List<std::optional<Index>>& indexes);
 
-std::string ToTxtString(const List<Stride>& strides);
+std::string ToTxtString(const List<Dim>& strides);
 
 std::string ToTxtString(const List<Iterator>& iterators);
 
-std::string ToTxtString(const tInMsgBox<List<Index>>& in_msg_box_indexes);
+std::string ToTxtString(const tInMsg<List<Index>>& in_msg_indexes_);
 
-std::string ToTxtString(const tOutMsgBox<List<Index>>& out_msg_box_indexes);
+std::string ToTxtString(const tOutMsg<List<Index>>& out_msg_indexes_);
 
 std::string ToTxtString(const std::vector<Index>& indexes);
 

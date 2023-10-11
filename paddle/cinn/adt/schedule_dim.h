@@ -14,22 +14,29 @@
 
 #pragma once
 
+#include <functional>
 #include <optional>
 
-#include "paddle/cinn/adt/equation_constant.h"
+#include "paddle/cinn/adt/equation_value.h"
+#include "paddle/cinn/adt/equation_variable.h"
+#include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn::adt {
 
-class EquationFunctionConstantsProvider {
- public:
-  virtual ~EquationFunctionConstantsProvider() = default;
+DEFINE_ADT_TAG(tReduced);
+DEFINE_ADT_TAG(tInjective);
+DEFINE_ADT_UNION(ScheduleDim, tReduced<LoopSize>, tInjective<LoopSize>);
 
-  virtual Constant GetDimSize(const Dim& dim) const = 0;
+LoopSize GetLoopSize(const ScheduleDim& sched_dim);
+List<int> GetReduceAxis(const List<ScheduleDim>& loop_sizes);
+List<int> GetInjectiveAxis(const List<ScheduleDim>& loop_sizes);
 
-  virtual bool AddDim(const Dim& dim, const Constant& dim_value) = 0;
+class IGroup;
 
- protected:
-  EquationFunctionConstantsProvider() = default;
-};
+List<ScheduleDim> MakeAnchorScheduleDims(
+    const IGroup& igroup,
+    const std::function<Value(const Iterator&)>& Value4Iterator,
+    const List<LoopSize>& loop_sizes,
+    const List<Iterator>& anchor_iterators);
 
 }  // namespace cinn::adt

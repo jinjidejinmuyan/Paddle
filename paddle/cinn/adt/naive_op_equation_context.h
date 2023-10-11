@@ -70,18 +70,14 @@ class NaiveOpEquationContext final : public OpEquationContext {
         GetOutDim_(GetOutDim),
         equations_{},
         attr_map_type_(attr_map_type),
-        in_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
-        in_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())),
-        out_msg_box_in_indexes_(MakeArgIndexes(in_tensors_ranks.size())),
-        out_msg_box_out_indexes_(MakeArgIndexes(out_tensors_ranks.size())) {
+        fake_op_placeholder_{UniqueId::New()} {
     Init<Iterator>(&in_iterator_tuples_, in_tensors_ranks);
     Init<Iterator>(&out_iterator_tuples_, out_tensors_ranks);
-    Init<Stride>(&in_stride_tuples_, in_tensors_ranks);
-    Init<Stride>(&out_stride_tuples_, out_tensors_ranks);
     Init<Dim>(&in_dim_tuples_, in_tensors_ranks);
     Init<Dim>(&out_dim_tuples_, out_tensors_ranks);
+    in_indexes_ = MakeArgIndexes(in_tensors_ranks.size());
+    out_indexes_ = MakeArgIndexes(out_tensors_ranks.size());
     GenerateDots();
-    fake_op_placeholder_ = GenerateFakeOpPlaceholder();
   }
 
   ~NaiveOpEquationContext() = default;
@@ -126,9 +122,8 @@ class NaiveOpEquationContext final : public OpEquationContext {
                                 Equations* equations) const {
     using ConstF = ConstantFunction<tOut<Iterator>, tIn<Index>>;
     Iterator const_iter{UniqueId::New()};
-    VisitEachTensorIndex([&](const auto& in_msg_box_index) {
-      (*equations)
-          ->emplace_back(ConstF{const_iter, in_msg_box_index, constant});
+    VisitEachTensorIndex([&](const auto& in_msg_index) {
+      (*equations)->emplace_back(ConstF{const_iter, in_msg_index, constant});
     });
     return const_iter;
   }
@@ -173,19 +168,11 @@ class NaiveOpEquationContext final : public OpEquationContext {
   }
 
   const Index& GetInIndex(std::size_t input_idx) const override {
-    return in_msg_box_in_indexes_.value()->at(input_idx);
+    return in_indexes_->at(input_idx);
   }
 
   const Index& GetOutIndex(std::size_t output_idx) const override {
-    return in_msg_box_out_indexes_.value()->at(output_idx);
-  }
-
-  const StrideTuple& GetInStrideTuple(std::size_t input_idx) const override {
-    return in_stride_tuples_.at(input_idx);
-  }
-
-  const StrideTuple& GetOutStrideTuple(std::size_t output_idx) const override {
-    return out_stride_tuples_.at(output_idx);
+    return out_indexes_->at(output_idx);
   }
 
   const DimTuple& GetInDimTuple(std::size_t input_idx) const override {
@@ -196,28 +183,16 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return out_dim_tuples_.at(output_idx);
   }
 
+  const List<Index>& in_indexes() const { return in_indexes_; }
+
+  const List<Index>& out_indexes() const { return out_indexes_; }
+
   const Equations& equations() const { return equations_; }
 
   void AddEquations(const Equations& equations) {
     for (const auto& equation : *equations) {
       equations_->emplace_back(equation);
     }
-  }
-
-  const tInMsgBox<List<Index>>& in_msg_box_in_indexes() const {
-    return in_msg_box_in_indexes_;
-  }
-
-  const tInMsgBox<List<Index>>& in_msg_box_out_indexes() const {
-    return in_msg_box_out_indexes_;
-  }
-
-  const tOutMsgBox<List<Index>>& out_msg_box_in_indexes() const {
-    return out_msg_box_in_indexes_;
-  }
-
-  const tOutMsgBox<List<Index>>& out_msg_box_out_indexes() const {
-    return out_msg_box_out_indexes_;
   }
 
   const FakeOpPlaceHolder& fake_op_placeholder() const {
@@ -232,14 +207,14 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   template <typename DoEachT>
   void VisitEachInputTensorIndex(const DoEachT& DoEach) const {
-    for (const auto& in_index : *in_msg_box_in_indexes_.value()) {
+    for (const auto& in_index : *in_indexes_) {
       DoEach(in_index);
     }
   }
 
   template <typename DoEachT>
   void VisitEachOutputTensorIndex(const DoEachT& DoEach) const {
-    for (const auto& out_index : *in_msg_box_out_indexes_.value()) {
+    for (const auto& out_index : *out_indexes_) {
       DoEach(out_index);
     }
   }
@@ -268,45 +243,12 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
-  std::optional<Index> OutMsgBoxIndex4InMsgBoxIndex(const Index& index) const {
-    std::optional<Index> ret = OutMsgBoxInIndex4InMsgBoxInIndex(index);
-    if (ret.has_value()) {
-      return ret.value();
-    }
-    return OutMsgBoxOutIndex4InMsgBoxOutIndex(index);
-  }
-
-  std::optional<Index> OutMsgBoxInIndex4InMsgBoxInIndex(
-      const Index& index) const {
-    std::optional<std::size_t> pos =
-        FindPos(in_msg_box_in_indexes_.value(), index);
-    if (!pos.has_value()) {
-      return std::nullopt;
-    }
-    CHECK_LT(pos.value(), out_msg_box_in_indexes().value()->size());
-    return out_msg_box_in_indexes().value()->at(pos.value());
-  }
-
-  std::optional<Index> OutMsgBoxOutIndex4InMsgBoxOutIndex(
-      const Index& index) const {
-    std::optional<std::size_t> pos =
-        FindPos(in_msg_box_out_indexes_.value(), index);
-    if (!pos.has_value()) {
-      return std::nullopt;
-    }
-    CHECK_LT(pos.value(), out_msg_box_out_indexes().value()->size());
-    return out_msg_box_out_indexes().value()->at(pos.value());
-  }
-
-  void EraseOutMsgBoxIndexes(
-      const std::vector<Index>& truncated_output_tensor_indexes);
-
   OpArgPos GetOpArgPos(const Index& index) const {
-    const auto& input_pos = FindPos(in_msg_box_in_indexes_.value(), index);
+    const auto& input_pos = FindPos(in_indexes_, index);
     if (input_pos.has_value()) {
       return tIn<std::size_t>{input_pos.value()};
     }
-    const auto& output_pos = FindPos(in_msg_box_out_indexes_.value(), index);
+    const auto& output_pos = FindPos(out_indexes_, index);
     if (output_pos.has_value()) {
       return tOut<std::size_t>{output_pos.value()};
     }
@@ -315,27 +257,21 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   std::int64_t GetDimSize(const Dim& dim) const;
 
-  Stride GetStride(bool is_out, std::size_t arg_idx, std::size_t axis) const {
+  Dim GetDim(bool is_out, std::size_t arg_idx, std::size_t axis) const {
     if (is_out) {
-      return out_stride_tuples_.at(arg_idx)->at(axis);
+      return out_dim_tuples_.at(arg_idx)->at(axis);
     } else {
-      return in_stride_tuples_.at(arg_idx)->at(axis);
+      return in_dim_tuples_.at(arg_idx)->at(axis);
     }
   }
 
-  Constant GetStrideSize(bool is_out,
-                         std::size_t arg_idx,
-                         std::size_t axis) const {
+  Constant GetDimSize(bool is_out,
+                      std::size_t arg_idx,
+                      std::size_t axis) const {
     const auto* Get = (is_out ? &GetOutDim_ : &GetInDim_);
-    const std::size_t rank = (is_out ? out_tensors_ranks_.at(arg_idx)
-                                     : in_tensors_ranks_.at(arg_idx));
-    std::size_t acc = 1;
-    for (std::size_t idx = axis + 1; idx < rank; ++idx) {
-      const auto& opt_dim = (*Get)(arg_idx, axis);
-      CHECK(opt_dim.has_value());
-      acc *= opt_dim.value();
-    }
-    return acc;
+    const auto& opt_dim = (*Get)(arg_idx, axis);
+    CHECK(opt_dim.has_value());
+    return opt_dim.value();
   }
 
   OpArgDimPos GetArgDimPosDescriptor(const Dim& dim) const {
@@ -349,7 +285,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
     return Undefined{};
   }
-  
+
   void Print();
 
  private:
@@ -363,16 +299,16 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
-  Index Dot(const IteratorTuple& iterator_tuple,
-            const StrideTuple& stride_tuple) {
-    CHECK(iterator_tuple->size() == stride_tuple->size());
+  Index IndexDot(const IteratorTuple& iterator_tuple,
+                 const DimTuple& dim_tuple) {
+    CHECK(iterator_tuple->size() == dim_tuple->size());
     Index index{UniqueId::New()};
     equations_->emplace_back(
-        adt::Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>{
-            stride_tuple, index, iterator_tuple});
+        adt::IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>{
+            dim_tuple, index, iterator_tuple});
     equations_->emplace_back(
-        adt::UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>{
-            stride_tuple, iterator_tuple, index});
+        adt::IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>{
+            dim_tuple, iterator_tuple, index});
     return index;
   }
 
@@ -387,10 +323,11 @@ class NaiveOpEquationContext final : public OpEquationContext {
 
   void GenerateDots() {
     for (std::size_t i = 0; i < in_tensors_ranks_.size(); ++i) {
-      Equal(GetInIndex(i), Dot(GetInIteratorTuple(i), GetInStrideTuple(i)));
+      Equal(GetInIndex(i), IndexDot(GetInIteratorTuple(i), GetInDimTuple(i)));
     }
     for (std::size_t i = 0; i < out_tensors_ranks_.size(); ++i) {
-      Equal(GetOutIndex(i), Dot(GetOutIteratorTuple(i), GetOutStrideTuple(i)));
+      Equal(GetOutIndex(i),
+            IndexDot(GetOutIteratorTuple(i), GetOutDimTuple(i)));
     }
   }
 
@@ -398,35 +335,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
   void Equal(const T& lhs, const T& rhs) {
     equations_->emplace_back(Identity<tOut<T>, tIn<T>>(lhs, rhs));
     equations_->emplace_back(Identity<tOut<T>, tIn<T>>(rhs, lhs));
-  }
-
-  FakeOpPlaceHolder GenerateFakeOpPlaceholder() const {
-    FakeOpPlaceHolder fake_op_placeholder{UniqueId::New()};
-
-    equations_->emplace_back(
-        InMsgBox2OutMsgBox<tOut<FakeOpPlaceHolder>,
-                           tOut<OpArgIndexes<std::optional<Index>>>,
-                           tIn<OpArgIndexes<Index>>>{
-            fake_op_placeholder,
-            MakeOutMsgBoxOpArgIndexes(),
-            MakeInMsgBoxOpArgIndexes()});
-
-    return fake_op_placeholder;
-  }
-
-  OpArgIndexes<std::optional<Index>> MakeOutMsgBoxOpArgIndexes() const {
-    List<std::optional<Index>> out_msg_box_out_indexes{};
-    for (const auto& out_index : *out_msg_box_out_indexes_.value()) {
-      out_msg_box_out_indexes->emplace_back(out_index);
-    }
-    return OpArgIndexes<std::optional<Index>>{
-        OpArgIndexes<std::optional<Index>>{out_msg_box_in_indexes_.value(),
-                                           out_msg_box_out_indexes}};
-  }
-
-  OpArgIndexes<Index> MakeInMsgBoxOpArgIndexes() const {
-    return OpArgIndexes<Index>{OpArgIndexes<Index>{
-        in_msg_box_in_indexes_.value(), in_msg_box_out_indexes_.value()}};
   }
 
   static std::optional<std::size_t> FindPos(const List<Index>& vector,
@@ -450,7 +358,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
     return std::nullopt;
   }
-  
+
   const utils::Attribute& GetAttribute(const std::string& name) const {
     const auto& iter = attr_map_type_->find(name);
     CHECK(iter != attr_map_type_->end())
@@ -464,18 +372,14 @@ class NaiveOpEquationContext final : public OpEquationContext {
   GetArgStaticDimT GetOutDim_;
   Equations equations_;
   const hlir::framework::AttrMapType* attr_map_type_;
-  tInMsgBox<List<Index>> in_msg_box_in_indexes_;
-  tInMsgBox<List<Index>> in_msg_box_out_indexes_;
-  tOutMsgBox<List<Index>> out_msg_box_in_indexes_;
-  tOutMsgBox<List<Index>> out_msg_box_out_indexes_;
+  FakeOpPlaceHolder fake_op_placeholder_;
+
   std::vector<IteratorTuple> in_iterator_tuples_;
   std::vector<IteratorTuple> out_iterator_tuples_;
-  std::vector<StrideTuple> in_stride_tuples_;
-  std::vector<StrideTuple> out_stride_tuples_;
   std::vector<DimTuple> in_dim_tuples_;
   std::vector<DimTuple> out_dim_tuples_;
-
-  FakeOpPlaceHolder fake_op_placeholder_;
+  List<Index> in_indexes_;
+  List<Index> out_indexes_;
 };
 
 std::function<std::shared_ptr<config::NaiveOpEquationContext>(const OpStmt&)>

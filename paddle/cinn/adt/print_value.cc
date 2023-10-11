@@ -58,19 +58,20 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const IndexDot<Value, Constant>& index_dot) {
+  std::string operator()(const IndexDotValue<Value, Constant>& value) {
     std::string ret;
-    const auto& [iters, constant] = index_dot.tuple();
+    const auto& [iters, constant] = value.tuple();
     ret +=
         "IndexDot(" + ToTxtString(iters) + ", " + ToTxtString(constant) + ")";
     return ret;
   }
 
-  std::string operator()(const IndexUnDot<Value, Constant>& index_undot) {
+  std::string operator()(const IndexUnDotValue<Value, Constant>& value) {
     std::string ret;
-    const auto& [index, constant] = index_undot.tuple();
-    ret +=
-        "IndexUndot(" + ToTxtString(index) + ", " + ToTxtString(constant) + ")";
+    const auto& [_, constant] = value.tuple();
+    const Value& value_ = value.GetIndexValue();
+    ret += "IndexUnDot(" + ToTxtString(value_) + ", " + ToTxtString(constant) +
+           ")";
     return ret;
   }
 

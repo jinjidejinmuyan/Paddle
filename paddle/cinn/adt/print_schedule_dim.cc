@@ -12,13 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/equation_function_constants_provider.h"
+#include "paddle/cinn/adt/print_schedule_dim.h"
+#include "paddle/cinn/adt/print_loop_size.h"
+#include "paddle/cinn/adt/schedule_dim.h"
 
 namespace cinn::adt {
 
-Constant IndexExprInferContext::GetDimSize(const Dim& dim) const {
-  return constants_provider_->GetDimSize(dim);
+namespace {
+
+std::string ToTxtStringScheduleDimImpl(const tReduced<LoopSize>& loop_size) {
+  return "R(" + ToTxtString(loop_size.value()) + ")";
+}
+
+std::string ToTxtStringScheduleDimImpl(const tInjective<LoopSize>& loop_size) {
+  return "I(" + ToTxtString(loop_size.value()) + ")";
+}
+
+}  // namespace
+
+std::string ToTxtString(const ScheduleDim& schedule_dim) {
+  return std::visit(
+      [&](const auto& impl) { return ToTxtStringScheduleDimImpl(impl); },
+      schedule_dim.variant());
 }
 
 }  // namespace cinn::adt

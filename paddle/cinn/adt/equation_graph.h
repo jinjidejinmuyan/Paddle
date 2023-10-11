@@ -157,43 +157,44 @@ class Graph final : public std::enable_shared_from_this<Graph> {
         out_variables.emplace(Variable{out_index.value()});
         in_variables.emplace(Variable{in_index.value()});
       },
-      [&](const Dot<List<Stride>, tOut<Index>, tIn<List<Iterator>>>& dot) {
-        const auto& [strides, out_index, in_iterators] = dot.tuple();
+      [&](const IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>& dot) {
+        const auto& [dims, out_index, in_iterators] = dot.tuple();
         out_variables.emplace(Variable{out_index.value()});
         for (const auto& iterator : *in_iterators.value()) {
           in_variables.emplace(Variable{iterator});
         }
       },
-      [&](const UnDot<List<Stride>, tOut<List<Iterator>>, tIn<Index>>& undot) {
-        const auto& [strides, out_iterators, in_index] = undot.tuple();
+      [&](const IndexUnDot<List<Dim>,
+                           tOut<List<Iterator>>, tIn<Index>>& undot) {
+        const auto& [dims, out_iterators, in_index] = undot.tuple();
         for (const auto& iterator : *out_iterators.value()) {
           out_variables.emplace(Variable{iterator});
         }
         in_variables.emplace(Variable{in_index.value()});
       },
-      [&](const InMsgBox2OutMsgBox<
+      [&](const InMsg2OutMsg<
                   tOut<FakeOpPlaceHolder>,
                   tOut<OpArgIndexes<std::optional<Index>>>,
-                  tIn<OpArgIndexes<Index>>>& in_msg_box2out_msg_box) {
-        const auto& [op_placeholder, out_box_indexes, in_box_indexes] =
-            in_msg_box2out_msg_box.tuple();
+                  tIn<OpArgIndexes<Index>>>& in_msg2out_msg) {
+        const auto& [op_placeholder, out_msg_indexes, in_msg_indexes] =
+            in_msg2out_msg.tuple();
         out_variables.emplace(Variable{op_placeholder.value()});
-        const auto& [out_box_in_indexes, out_box_out_indexes] =
-            out_box_indexes.value().tuple();
-        const auto& [in_box_in_indexes, in_box_out_indexes] =
-            in_box_indexes.value().tuple();
-        for (const auto& index : *out_box_in_indexes.value()) {
+        const auto& [out_msg_in_indexes, out_msg_out_indexes] =
+            out_msg_indexes.value().tuple();
+        const auto& [in_msg_in_indexes, in_msg_out_indexes] =
+            in_msg_indexes.value().tuple();
+        for (const auto& index : *out_msg_in_indexes.value()) {
           out_variables.emplace(Variable{index});
         }
-        for (const auto& index : *out_box_out_indexes.value()) {
+        for (const auto& index : *out_msg_out_indexes.value()) {
           if (index.has_value()) {
             out_variables.emplace(Variable{index.value()});
           }
         }
-        for (const auto& index : *in_box_in_indexes.value()) {
+        for (const auto& index : *in_msg_in_indexes.value()) {
           in_variables.emplace(Variable{index});
         }
-        for (const auto& index : *in_box_out_indexes.value()) {
+        for (const auto& index : *in_msg_out_indexes.value()) {
           in_variables.emplace(Variable{index});
         }
       },

@@ -13,5 +13,80 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/schedule_descriptor.h"
+#include "paddle/cinn/adt/equation_solver.h"
+#include "paddle/cinn/adt/igroup.h"
+#include "paddle/cinn/adt/index_expr_infer_context.h"
+#include "paddle/cinn/adt/kgroup.h"
+#include "paddle/cinn/adt/schedule_dim.h"
 
-namespace cinn::adt {}  // namespace cinn::adt
+namespace cinn::adt {
+
+namespace {
+
+const std::vector<int32_t>& GetTensorShape(const Tensor& tensor) {
+  CHECK(tensor.Has<adapter::Tensor>());
+  return tensor.Get<adapter::Tensor>().GetShape();
+}
+
+}  // namespace
+
+LoopDescriptors CreateScheduleDescriptor(const ScheduleMesh& sched_mesh,
+                                         const List<LoopType>& loop_types) {
+  const auto& sched_dims = GetOutputDimValues(sched_mesh);
+  CHECK_EQ(sched_dims->size(), loop_types->size());
+  LoopDescriptors ret{};
+  for (std::size_t i = 0; i < sched_dims->size(); ++i) {
+    const auto& sched_dim = sched_dims->at(i);
+    CHECK(sched_dim.Has<std::int64_t>());
+    ret->emplace_back(LoopDescriptor{loop_types->at(i),
+                                     LoopSize{sched_dim.Get<std::int64_t>()}});
+  }
+  return ret;
+}
+
+LoopDescriptors MakeNaiveScheduleDescriptor(
+    const std::shared_ptr<KGroup>& kgroup,
+    const std::shared_ptr<IGroup>& igroup) {
+  const Tensor& tensor = igroup->anchor_tensor();
+
+  List<LoopDescriptor> ret{};
+  const auto tensor_shape = GetTensorShape(tensor);
+  for (int32_t dim : tensor_shape) {
+    ret->emplace_back(LoopDescriptor{Temporal{}, dim});
+  }
+  return ret;
+}
+
+List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd) {
+  List<LoopSize> sd_sizes{};
+  for (const auto& loop_descriptor : *sd) {
+    const auto& [loop_type, loop_size] = loop_descriptor.tuple();
+    sd_sizes->emplace_back(loop_size);
+  }
+  return sd_sizes;
+}
+
+std::string DebugStringImpl(const LoopDescriptor& loop_descriptor) {
+  const auto& [loop_type, loop_size] = loop_descriptor.tuple();
+  std::string ret{};
+  auto* string = &ret;
+  loop_type >>
+      match{[&](const S0x&) { *string += "blockIdx.x"; },
+            [&](const S0y&) { *string += "blockIdx.y"; },
+            [&](const S0z&) { *string += "blockIdx.z"; },
+            [&](const S1x&) { *string += "threadIdx.x"; },
+            [&](const S1y&) { *string += "threadIdx.y"; },
+            [&](const S1z&) { *string += "threadIdx.z"; },
+            [&](const Temporal& temporal) {
+              *string += temporal.iter_var_name();
+            },
+            [&](const Vectorize& vectorize) {
+              *string += vectorize.iter_var_name();
+            },
+            [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
+  CHECK(loop_size.Has<std::int64_t>());
+  *string += "=0.." + std::to_string(loop_size.Get<std::int64_t>());
+  return ret;
+}
+
+}  // namespace cinn::adt
