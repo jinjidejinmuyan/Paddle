@@ -114,8 +114,7 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "(Array)"
-       << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -205,11 +204,17 @@ void IrPrinter::PrintValue(Value v) {
     os << ret->second;
     return;
   }
-
-  std::string new_name = "%" + std::to_string(cur_var_number_);
-  cur_var_number_++;
-  aliases_[key] = new_name;
-  os << new_name;
+  if (v.isa<OpResult>()) {
+    std::string new_name = "%" + std::to_string(cur_result_number_);
+    cur_result_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  } else {
+    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
+    cur_block_argument_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  }
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {
@@ -315,6 +320,11 @@ void Program::Print(std::ostream& os) const {
 void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
   printer.PrintOperation(this);
+}
+
+void Value::Print(std::ostream& os) const {
+  IrPrinter printer(os);
+  printer.PrintValue(*this);
 }
 
 void Type::Print(std::ostream& os) const {
